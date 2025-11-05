@@ -25,12 +25,12 @@ export default function RecentSales() {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
+      <Card className="h-full flex flex-col">
+        <CardHeader className="flex-shrink-0 pb-3">
           <CardTitle>Ventas Recientes</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+        <CardContent className="flex-1 flex flex-col">
+          <div className="space-y-3 flex-1">
             {[1, 2, 3].map((i) => (
               <div key={i} className="flex items-center justify-between p-3 border rounded-lg animate-pulse">
                 <div className="flex-1">
@@ -51,12 +51,12 @@ export default function RecentSales() {
 
   if (error) {
     return (
-      <Card>
-        <CardHeader>
+      <Card className="h-full flex flex-col">
+        <CardHeader className="flex-shrink-0 pb-3">
           <CardTitle>Ventas Recientes</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="text-center py-4 text-red-600">
+        <CardContent className="flex-1 flex items-center justify-center">
+          <div className="text-center text-red-600">
             Error cargando ventas: {error.message}
           </div>
         </CardContent>
@@ -64,7 +64,7 @@ export default function RecentSales() {
     )
   }
 
-  const recentSales = sales?.slice(0, 5) || [] // Mostrar solo las 5 más recientes
+  const recentSales = sales?.slice(0, 10) || [] // Mostrar hasta 10 ventas
   const totalToday = sales?.reduce((total, sale) => total + sale.total_amount, 0) || 0
 
   const formatTime = (dateString: string) => {
@@ -90,8 +90,8 @@ export default function RecentSales() {
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="h-full flex flex-col">
+      <CardHeader className="flex-shrink-0 pb-3">
         <CardTitle className="flex items-center justify-between">
           <span>Ventas Recientes</span>
           <Badge variant="secondary">
@@ -99,44 +99,55 @@ export default function RecentSales() {
           </Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      
+      <CardContent className="flex-1 flex flex-col p-0">
         {recentSales.length === 0 ? (
-          <div className="text-center py-6 text-gray-500">
-            <Receipt className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-gray-500">
+            <Receipt className="h-12 w-12 mb-2 text-gray-300" />
             <p>No hay ventas hoy</p>
           </div>
         ) : (
           <>
-            <div className="space-y-3">
-              {recentSales.map((sale) => (
-                <div
-                  key={sale.id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex-1">
-                    <div className="font-medium text-sm">{getClientName(sale)}</div>
-                    <div className="text-xs text-gray-500">
-                      {getItemsCount(sale)} producto{getItemsCount(sale) !== 1 ? 's' : ''} • {formatTime(sale.created_at)}
+            {/* Lista de ventas con scroll */}
+            <div className="flex-1 overflow-y-auto px-4 pb-3 max-h-64"> {/* Altura máxima de ~256px */}
+              <div className="space-y-2">
+                {recentSales.map((sale) => (
+                  <div
+                    key={sale.id}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate" title={getClientName(sale)}>
+                        {getClientName(sale)}
+                      </div>
+                      <div className="text-xs text-gray-500 truncate">
+                        {getItemsCount(sale)} producto{getItemsCount(sale) !== 1 ? 's' : ''} • {formatTime(sale.created_at)}
+                      </div>
+                    </div>
+                    
+                    <div className="text-right flex-shrink-0 ml-2">
+                      <div className="font-semibold text-sm whitespace-nowrap">
+                        {formatAmount(sale.total_amount)}
+                      </div>
+                      <Badge 
+                        variant="secondary" 
+                        className={`text-xs whitespace-nowrap ${paymentMethodColors[sale.payment_method as keyof typeof paymentMethodColors]}`}
+                      >
+                        {paymentMethodLabels[sale.payment_method as keyof typeof paymentMethodLabels]}
+                      </Badge>
                     </div>
                   </div>
-                  
-                  <div className="text-right">
-                    <div className="font-semibold text-sm">{formatAmount(sale.total_amount)}</div>
-                    <Badge 
-                      variant="secondary" 
-                      className={`text-xs ${paymentMethodColors[sale.payment_method as keyof typeof paymentMethodColors]}`}
-                    >
-                      {paymentMethodLabels[sale.payment_method as keyof typeof paymentMethodLabels]}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
             
-            <div className="mt-4 pt-4 border-t">
+            {/* Total del día - Siempre visible */}
+            <div className="flex-shrink-0 border-t p-4 bg-gray-50/50">
               <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Total del día:</span>
-                <span className="font-bold text-lg">{formatAmount(totalToday)}</span>
+                <span className="text-gray-600 font-medium">Total del día:</span>
+                <span className="font-bold text-lg text-green-600">
+                  {formatAmount(totalToday)}
+                </span>
               </div>
             </div>
           </>
