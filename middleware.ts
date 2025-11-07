@@ -38,6 +38,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
+  // Rutas públicas (acceso sin autenticación)
+  const publicRoutes = ['/', '/disponibles', '/api/availability']
+  
+  const { pathname } = request.nextUrl
+
+  // Permitir acceso a rutas públicas sin autenticación
+  if (publicRoutes.some(route => pathname.startsWith(route))) {
+    return NextResponse.next()
+  }
+
   // Si el usuario está autenticado y trata de acceder a la página de login, redirigir al dashboard
   if (request.nextUrl.pathname === '/' && user) {
     const redirectUrl = new URL('/dashboard', request.url)
