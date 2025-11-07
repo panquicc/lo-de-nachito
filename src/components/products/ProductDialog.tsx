@@ -62,25 +62,27 @@ export default function ProductDialog({ product, variant = 'create', onSuccess }
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-2xl">
             {variant === 'create' ? 'Crear Nuevo Producto' : 'Editar Producto'}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-base">
             {variant === 'create' 
-              ? 'Agregá un nuevo producto al inventario del kiosco.' 
-              : 'Modificá los datos del producto.'
+              ? 'Completá toda la información del nuevo producto' 
+              : 'Modificá los datos del producto según sea necesario'
             }
           </DialogDescription>
         </DialogHeader>
         
-        <ProductForm
-          product={product}
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-          isLoading={isLoading}
-        />
+        <div className="py-4">
+          <ProductForm
+            product={product}
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+            isLoading={isLoading}
+          />
+        </div>
       </DialogContent>
     </Dialog>
   )

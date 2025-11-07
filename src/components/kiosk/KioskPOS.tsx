@@ -3,7 +3,7 @@
 
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, Minus, Trash2, ShoppingCart, Loader2 } from 'lucide-react'
+import { Plus, Minus, Trash2, ShoppingCart, Loader2, Zap } from 'lucide-react'
 import { useProducts } from '@/hooks/useProducts'
 import { useBookings } from '@/hooks/useBookings'
 import type { Booking } from '@/lib/api/bookings'
@@ -20,6 +20,7 @@ type CartItem = {
   price: number
   quantity: number
   stock?: number
+  isComposite?: boolean
 }
 
 export default function KioskPOS() {
@@ -32,8 +33,8 @@ export default function KioskPOS() {
   const createSaleMutation = useCreateSale()
 
   const addToCart = (product: Product) => {
-    // Verificar stock
-    if (product.stock !== null && product.stock && product.stock <= 0) {
+    // Verificar stock para productos normales
+    if (product.track_stock && product.stock !== null && product.stock <= 0) {
       toast.warning('Producto sin stock disponible')
       return
     }
@@ -42,8 +43,8 @@ export default function KioskPOS() {
       const existingItem = currentCart.find(item => item.productId === product.id)
       
       if (existingItem) {
-        // Verificar si supera el stock disponible
-        if (product.stock !== null && product.stock !== undefined && existingItem.quantity + 1 > product.stock) {
+        // Verificar stock para productos normales
+        if (product.track_stock && product.stock !== null && existingItem.quantity + 1 > product.stock) {
           toast.warning('No hay suficiente stock disponible')
           return currentCart
         }
@@ -60,7 +61,8 @@ export default function KioskPOS() {
         name: product.name,
         price: product.price,
         quantity: 1,
-        stock: product.stock || undefined
+        stock: product.stock || undefined,
+        isComposite: product.is_composite
       }]
     })
   }
@@ -73,7 +75,7 @@ export default function KioskPOS() {
 
     // Encontrar el producto original para verificar stock
     const product = products?.find(p => p.id === productId)
-    if (product && product.stock !== null && product.stock !== undefined && newQuantity > product.stock) {
+    if (product && product.track_stock && product.stock !== null && newQuantity > product.stock) {
       toast.warning('No hay suficiente stock disponible')
       return
     }
@@ -106,7 +108,7 @@ export default function KioskPOS() {
         sale: {
           total_amount: totalAmount,
           payment_method: paymentMethod,
-          client_id: undefined // Podríamos agregar selector de cliente después
+          client_id: undefined
         },
         items: cart.map(item => ({
           product_id: item.productId,
@@ -124,8 +126,9 @@ export default function KioskPOS() {
       setPaymentMethod('EFECTIVO')
       
       toast.success('Venta procesada exitosamente')
-    } catch (error) {
-      toast.error('Error al procesar la venta: ' + (error as Error).message)
+    } catch (error: any) {
+      // Mostrar error específico de la API
+      toast.error(error.message || 'Error al procesar la venta')
     }
   }
 
@@ -138,9 +141,24 @@ export default function KioskPOS() {
 
   const getProductStockStatus = (product: Product) => {
     if (!product.is_active) return 'INACTIVE'
-    if (product.stock === 0) return 'OUT_OF_STOCK'
-    if (product.stock && product.stock < 5) return 'LOW_STOCK'
+    if (product.track_stock && product.stock === 0) return 'OUT_OF_STOCK'
+    if (product.track_stock && product.stock && product.stock < 5) return 'LOW_STOCK'
     return 'AVAILABLE'
+  }
+
+  const getProductBadgeVariant = (product: Product) => {
+    const status = getProductStockStatus(product)
+    if (status === 'OUT_OF_STOCK') return 'destructive'
+    if (status === 'LOW_STOCK') return 'default'
+    if (product.is_composite) return 'secondary'
+    return 'secondary'
+  }
+
+  const getProductBadgeText = (product: Product) => {
+    if (product.is_composite) return 'COMPUESTO'
+    if (!product.track_stock) return 'SIN CONTROL'
+    if (product.stock === null) return 'STOCK ∞'
+    return `STOCK ${product.stock}`
   }
 
   if (productsLoading) {
@@ -196,21 +214,35 @@ export default function KioskPOS() {
       {/* Productos */}
       <Card className="lg:col-span-2">
         <CardHeader>
-          <CardTitle>Productos Disponibles</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Productos Disponibles</span>
+            <div className="flex items-center space-x-2 text-sm text-gray-500">
+              <Badge variant="secondary" className="text-xs">
+                COMPUESTO
+              </Badge>
+              <span>•</span>
+              <Badge variant="destructive" className="text-xs">
+                SIN STOCK
+              </Badge>
+            </div>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {activeProducts.map((product) => {
               const stockStatus = getProductStockStatus(product)
               const isOutOfStock = stockStatus === 'OUT_OF_STOCK'
               const isLowStock = stockStatus === 'LOW_STOCK'
+              const isComposite = product.is_composite
               
               return (
                 <Button
                   key={product.id}
                   variant={isOutOfStock ? "ghost" : "outline"}
                   disabled={isOutOfStock}
-                  className="h-auto p-4 flex flex-col items-center justify-center space-y-2 relative"
+                  className={`h-auto p-3 flex flex-col items-center justify-center space-y-2 relative ${
+                    isComposite ? 'border-blue-300 bg-blue-50' : ''
+                  }`}
                   onClick={() => addToCart(product)}
                 >
                   {isOutOfStock && (
@@ -219,17 +251,22 @@ export default function KioskPOS() {
                     </div>
                   )}
                   
+                  {/* Icono para productos compuestos */}
+                  {isComposite && (
+                    <Zap className="h-3 w-3 text-blue-500 absolute top-1 right-1" />
+                  )}
+                  
                   <div className="text-lg font-semibold">
                     {formatPrice(product.price)}
                   </div>
-                  <div className="text-sm text-center leading-tight">
+                  <div className="text-sm text-center leading-tight line-clamp-2">
                     {product.name}
                   </div>
                   <Badge 
-                    variant={isOutOfStock ? "destructive" : isLowStock ? "default" : "secondary"}
+                    variant={getProductBadgeVariant(product)}
                     className="text-xs"
                   >
-                    Stock: {product.stock === null ? '∞' : product.stock}
+                    {getProductBadgeText(product)}
                   </Badge>
                 </Button>
               )
@@ -246,7 +283,7 @@ export default function KioskPOS() {
             Carrito de Venta
             {cart.length > 0 && (
               <Badge variant="secondary" className="ml-2">
-                {cart.length}
+                {cart.reduce((total, item) => total + item.quantity, 0)} items
               </Badge>
             )}
           </CardTitle>
@@ -297,9 +334,19 @@ export default function KioskPOS() {
               </div>
             ) : (
               cart.map((item) => (
-                <div key={item.productId} className="flex items-center justify-between p-3 border rounded-lg bg-white">
+                <div 
+                  key={item.productId} 
+                  className={`flex items-center justify-between p-3 border rounded-lg bg-white ${
+                    item.isComposite ? 'border-blue-200 bg-blue-50' : ''
+                  }`}
+                >
                   <div className="flex-1">
-                    <div className="font-medium text-sm">{item.name}</div>
+                    <div className="flex items-center space-x-1">
+                      <div className="font-medium text-sm">{item.name}</div>
+                      {item.isComposite && (
+                        <Zap className="h-3 w-3 text-blue-500" />
+                      )}
+                    </div>
                     <div className="text-xs text-gray-500">
                       {formatPrice(item.price)} c/u • Total: {formatPrice(item.price * item.quantity)}
                     </div>
@@ -347,10 +394,19 @@ export default function KioskPOS() {
                 <span className="text-xl font-bold">{formatPrice(totalAmount)}</span>
               </div>
               
+              <div className="text-xs text-gray-500">
+                {cart.some(item => item.isComposite) && (
+                  <p className="text-blue-600">
+                    ⓘ Los productos compuestos incluyen sus componentes
+                  </p>
+                )}
+              </div>
+              
               <Button 
                 className="w-full" 
                 onClick={handleCheckout}
                 disabled={createSaleMutation.isPending}
+                size="lg"
               >
                 {createSaleMutation.isPending ? (
                   <>

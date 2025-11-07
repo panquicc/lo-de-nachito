@@ -1,7 +1,6 @@
 // src/app/dashboard/products/page.tsx
 import ProductsTable from '@/components/products/ProductsTable'
 import ProductDialog from '@/components/products/ProductDialog'
-import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
 export default function ProductsPage() {

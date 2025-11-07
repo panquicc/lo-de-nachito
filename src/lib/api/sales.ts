@@ -1,34 +1,42 @@
 // src/lib/api/sales.ts
-import { Client } from './clients'
+export interface Sale {
+  id: string
+  total_amount: number
+  payment_method: PaymentMethod
+  client_id: string | null
+  booking_id: string | null
+  created_at: string
+  sale_items?: SaleItem[]
+  clients?: {
+    name: string
+    email: string
+  }
+}
 
-export type PaymentMethod = 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA'
-
-export type SaleItem = {
+export interface SaleItem {
+  id: string
   product_id: string
   quantity: number
   unit_price: number
+  created_at: string
   products?: {
     name: string
   }
 }
 
-export type Sale = {
-  id: string
-  total_amount: number
-  payment_method: PaymentMethod
-  client_id?: string
-  created_at: string
-  clients?: Client
-  sale_items: (SaleItem & { id: string })[]
-}
+export type PaymentMethod = 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA'
 
-export type CreateSaleData = {
+export interface SaleData {
   sale: {
     total_amount: number
     payment_method: PaymentMethod
     client_id?: string
   }
-  items: SaleItem[]
+  items: {
+    product_id: string
+    quantity: number
+    unit_price: number
+  }[]
   bookingId?: string
 }
 
@@ -36,7 +44,7 @@ export async function getSales(date?: string): Promise<Sale[]> {
   const url = date ? `/api/sales?date=${date}` : '/api/sales'
   
   const response = await fetch(url)
-  
+
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error || 'Failed to fetch sales')
@@ -45,7 +53,7 @@ export async function getSales(date?: string): Promise<Sale[]> {
   return response.json()
 }
 
-export async function createSale(saleData: CreateSaleData): Promise<Sale> {
+export async function createSale(saleData: SaleData): Promise<{ success: boolean; sale: Sale }> {
   const response = await fetch('/api/sales', {
     method: 'POST',
     headers: {

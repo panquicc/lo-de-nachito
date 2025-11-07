@@ -1,38 +1,32 @@
 // src/components/products/ProductsTable.tsx
 'use client'
 
-import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useProducts, useDeleteProduct } from '@/hooks/useProducts'
+import { Trash2, Package, Loader2, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Edit, Trash2, Package, Loader2, Search, Plus } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { useProducts, useDeleteProduct } from '@/hooks/useProducts'
 import { Product } from '@/lib/api/products'
 import ProductDialog from './ProductDialog'
+import { toast } from 'sonner'
+import { useState } from 'react'
 
-// Necesitamos crear el hook useDeleteProduct
 export default function ProductsTable() {
   const [searchTerm, setSearchTerm] = useState('')
   const { data: products, isLoading, error, refetch } = useProducts()
-  // Temporalmente usaremos un mock para delete hasta que creemos el hook
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const deleteProductMutation = useDeleteProduct()
 
   const handleDelete = async (product: Product) => {
     if (!confirm(`¿Estás seguro de que querés eliminar "${product.name}"?`)) {
       return
     }
 
-    setDeletingId(product.id)
     try {
-      // TODO: Implementar deleteProduct mutation
-      // await deleteProductMutation.mutateAsync(product.id)
-      await new Promise(resolve => setTimeout(resolve, 1000)) // Simulación
-      refetch()
+      await deleteProductMutation.mutateAsync(product.id)
+      // No necesitamos refetch() porque el hook invalida la query automáticamente
     } catch (error) {
       alert('Error al eliminar producto: ' + (error as Error).message)
-    } finally {
-      setDeletingId(null)
     }
   }
 
@@ -154,6 +148,7 @@ export default function ProductsTable() {
           <div className="space-y-4">
             {filteredProducts.map((product) => {
               const stockStatus = getStockStatus(product)
+              const isDeleting = deleteProductMutation.isPending && deleteProductMutation.variables === product.id
               
               return (
                 <div
@@ -191,9 +186,9 @@ export default function ProductsTable() {
                         variant="outline" 
                         size="sm"
                         onClick={() => handleDelete(product)}
-                        disabled={deletingId === product.id}
+                        disabled={isDeleting}
                       >
-                        {deletingId === product.id ? (
+                        {isDeleting ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <Trash2 className="h-4 w-4" />
