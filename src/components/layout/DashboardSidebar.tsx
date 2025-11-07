@@ -3,14 +3,15 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { 
-  LayoutDashboard, 
-  Calendar, 
-  Users, 
-  ShoppingCart, 
+import {
+  LayoutDashboard,
+  Calendar,
+  Users,
+  ShoppingCart,
   Package,
   LogOut,
-  User
+  User,
+  ChartPie
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'Clientes', href: '/dashboard/clients', icon: Users },
   { name: 'Kiosco', href: '/dashboard/kiosk', icon: ShoppingCart },
   { name: 'Productos', href: '/dashboard/products', icon: Package },
+  { name: 'Analíticas', href: '/dashboard/analytics', icon: ChartPie },
 ]
 
 interface DashboardSidebarProps {
@@ -81,9 +83,9 @@ export default function DashboardSidebar({ user }: DashboardSidebarProps) {
             </div>
           </div>
         )}
-        
-        <Button 
-          variant="ghost" 
+
+        <Button
+          variant="ghost"
           className="w-full justify-start text-gray-300 hover:text-white hover:bg-gray-800"
           onClick={handleLogout}
           disabled={isLoading}
