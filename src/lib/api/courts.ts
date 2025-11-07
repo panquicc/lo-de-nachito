@@ -1,11 +1,12 @@
 // src/lib/api/courts.ts
 import { createClient } from '@/lib/supabase/client'
 
-export type Court = {
+export interface Court {
   id: string
   name: string
   type: 'PADEL' | 'FUTBOL'
   is_active: boolean
+  hour_price: number
   created_at: string
 }
 

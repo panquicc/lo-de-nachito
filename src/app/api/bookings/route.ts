@@ -1,4 +1,4 @@
-// src/app/api/bookings/route.ts
+// src/app/api/bookings/route.ts - ACTUALIZADO
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
@@ -50,9 +50,39 @@ export async function POST(request: Request) {
     const supabase = await createClient()
     const bookingData = await request.json()
 
+    // Validar que los montos sean consistentes
+    if (bookingData.payment_method === 'EFECTIVO' && bookingData.cash_amount !== bookingData.amount) {
+      return NextResponse.json(
+        { error: 'Para pago en efectivo, el monto en efectivo debe ser igual al total' },
+        { status: 400 }
+      )
+    }
+
+    if (bookingData.payment_method === 'MERCADO_PAGO' && bookingData.mercado_pago_amount !== bookingData.amount) {
+      return NextResponse.json(
+        { error: 'Para pago con Mercado Pago, el monto de MP debe ser igual al total' },
+        { status: 400 }
+      )
+    }
+
+    if (bookingData.payment_method === 'MIXTO' && 
+        (bookingData.cash_amount + bookingData.mercado_pago_amount) !== bookingData.amount) {
+      return NextResponse.json(
+        { error: 'Para pago mixto, la suma de efectivo y MP debe ser igual al total' },
+        { status: 400 }
+      )
+    }
+
     const { data: booking, error } = await supabase
       .from('bookings')
-      .insert([bookingData])
+      .insert([{
+        ...bookingData,
+        // Asegurar valores por defecto
+        cash_amount: bookingData.cash_amount || 0,
+        mercado_pago_amount: bookingData.mercado_pago_amount || 0,
+        hour_price: bookingData.hour_price || 0,
+        deposit_amount: bookingData.deposit_amount || 0
+      }])
       .select(`
         *,
         courts (name, type),

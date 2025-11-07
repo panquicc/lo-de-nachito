@@ -2,7 +2,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Calendar, List } from 'lucide-react'
+import { Calendar, List, Plus } from 'lucide-react'
 import BookingDialog from './BookingDialog'
 import Link from 'next/link'
 
@@ -12,9 +12,10 @@ interface BookingsHeaderProps {
   viewMode: ViewMode
   onViewModeChange: (mode: ViewMode) => void
   onBookingSuccess: () => void
+  onNewBooking: () => void
 }
 
-export function BookingsHeader({ viewMode, onViewModeChange, onBookingSuccess }: BookingsHeaderProps) {
+export function BookingsHeader({ viewMode, onViewModeChange, onBookingSuccess, onNewBooking }: BookingsHeaderProps) {
   return (
     <div className="flex items-center justify-between">
       <Button asChild>
@@ -45,7 +46,12 @@ export function BookingsHeader({ viewMode, onViewModeChange, onBookingSuccess }:
           <Calendar className="h-4 w-4 mr-2" />
           Calendario
         </Button>
-        <BookingDialog variant="create" onSuccess={onBookingSuccess} />
+
+        <Button onClick={onNewBooking}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nuevo Turno
+        </Button>
+        
       </div>
     </div>
   )

@@ -2,7 +2,7 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import BookingForm from '@/components/bookings/BookingForm'
+import { BookingForm } from '@/components/bookings/BookingForm'
 import { CreateBookingData } from '@/lib/api/bookings'
 import { useCreateBooking } from '@/hooks/useBookings'
 import { Button } from '@/components/ui/button'

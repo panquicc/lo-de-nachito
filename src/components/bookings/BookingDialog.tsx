@@ -1,29 +1,32 @@
-// src/components/bookings/BookingDialog.tsx
+// src/components/bookings/BookingDialog.ts
 'use client'
 
-import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
-import { Plus, Edit } from 'lucide-react'
-import { useState } from 'react'
-import BookingForm from './BookingForm'
+import { BookingForm } from './BookingForm'
 import { Booking, CreateBookingData } from '@/lib/api/bookings'
 import { useCreateBooking, useUpdateBooking } from '@/hooks/useBookings'
 
 interface BookingDialogProps {
   booking?: Booking
   variant?: 'create' | 'edit'
+  open: boolean
+  onOpenChange: (open: boolean) => void
   onSuccess?: () => void
 }
 
-export default function BookingDialog({ booking, variant = 'create', onSuccess }: BookingDialogProps) {
-  const [open, setOpen] = useState(false)
+export default function BookingDialog({
+  booking,
+  variant = 'create',
+  open,
+  onOpenChange,
+  onSuccess
+}: BookingDialogProps) {
   const createBookingMutation = useCreateBooking()
   const updateBookingMutation = useUpdateBooking()
 
@@ -34,8 +37,8 @@ export default function BookingDialog({ booking, variant = 'create', onSuccess }
       } else if (booking) {
         await updateBookingMutation.mutateAsync({ id: booking.id, updates: data })
       }
-      
-      setOpen(false)
+
+      onOpenChange(false)
       onSuccess?.()
     } catch (error) {
       console.error('Error submitting booking:', error)
@@ -43,38 +46,26 @@ export default function BookingDialog({ booking, variant = 'create', onSuccess }
   }
 
   const handleCancel = () => {
-    setOpen(false)
+    onOpenChange(false)
   }
 
   const isLoading = createBookingMutation.isPending || updateBookingMutation.isPending
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {variant === 'create' ? (
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo Turno
-          </Button>
-        ) : (
-          <Button variant="outline" size="sm">
-            <Edit className="h-4 w-4" />
-          </Button>
-        )}
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {variant === 'create' ? 'Crear Nuevo Turno' : 'Editar Turno'}
           </DialogTitle>
           <DialogDescription>
-            {variant === 'create' 
-              ? 'Completá los datos del nuevo turno.' 
+            {variant === 'create'
+              ? 'Completá los datos del nuevo turno.'
               : 'Modificá los datos del turno.'
             }
           </DialogDescription>
         </DialogHeader>
-        
+
         <BookingForm
           booking={booking}
           onSubmit={handleSubmit}

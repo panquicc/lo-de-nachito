@@ -312,6 +312,8 @@ export default function BookingsCalendar() {
                     <BookingDialog 
                       booking={booking} 
                       variant="edit"
+                      open={false}
+                      onOpenChange={() => {}}
                       onSuccess={() => fetch(
                         `/bookings?date=${dateString}${selectedCourt ? `&court_id=${selectedCourt}` : ''}`
                       )}

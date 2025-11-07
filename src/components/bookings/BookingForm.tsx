@@ -1,21 +1,16 @@
-// src/components/bookings/BookingForm.tsx
+// src/components/bookings/BookingForm.tsx - CORREGIDO
 'use client'
 
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
-import { Button } from '@/components/ui/button'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
+import { Booking, CreateBookingData, BookingStatus, PaymentMethod } from '@/lib/api/bookings'
+import { formatArgentinaDate, formatArgentinaTime } from '@/lib/date-utils'
 import { Textarea } from '@/components/ui/textarea'
+import { useClients } from '@/hooks/useClients'
+import { Button } from '@/components/ui/button'
+import { useCourts } from '@/hooks/useCourts'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useState, useEffect } from 'react'
+import { Loader2 } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -23,378 +18,347 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Search, UserPlus } from 'lucide-react'
-import { useCourts } from '@/hooks/useCourts'
-import { useClients } from '@/hooks/useClients'
-import { useCreateClient } from '@/hooks/useClients'
-import { Booking, CreateBookingData } from '@/lib/api/bookings'
-
-const bookingSchema = z.object({
-  court_id: z.string().min(1, 'La cancha es requerida'),
-  client_id: z.string().optional(),
-  start_time: z.string().min(1, 'La fecha y hora de inicio es requerida'),
-  end_time: z.string().min(1, 'La fecha y hora de fin es requerida'),
-  status: z.enum(['PENDIENTE', 'SEÑADO', 'PAGADO', 'CANCELADO']),
-  amount: z.number().min(0, 'El monto no puede ser negativo'),
-  notes: z.string().optional(),
-})
-
-type BookingFormData = z.infer<typeof bookingSchema>
 
 interface BookingFormProps {
   booking?: Booking
-  onSubmit: (data: CreateBookingData) => Promise<void>
+  onSubmit: (data: CreateBookingData) => void
   onCancel: () => void
   isLoading?: boolean
 }
 
-export default function BookingForm({ booking, onSubmit, onCancel, isLoading = false }: BookingFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [clientSearch, setClientSearch] = useState('')
-  const [showClientForm, setShowClientForm] = useState(false)
-  const [newClientData, setNewClientData] = useState({ name: '', phone: '', email: '' })
+// Mover calculateDuration fuera del componente
+const calculateDuration = (start: string, end: string): string => {
+  const startTime = new Date(start)
+  const endTime = new Date(end)
+  return ((endTime.getTime() - startTime.getTime()) / (1000 * 60)).toString()
+}
 
+// Mover generateTimeOptions fuera del componente
+const generateTimeOptions = () => {
+  const options = []
+  for (let hour = 8; hour <= 23; hour++) {
+    options.push(`${hour.toString().padStart(2, '0')}:00`)
+    if (hour < 23) { // No agregar 23:30
+      options.push(`${hour.toString().padStart(2, '0')}:30`)
+    }
+  }
+  return options
+}
+
+const timeOptions = generateTimeOptions()
+
+export function BookingForm({ booking, onSubmit, onCancel, isLoading = false }: BookingFormProps) {
   const { data: courts } = useCourts()
-  const { data: clients } = useClients(clientSearch || undefined)
-  const createClientMutation = useCreateClient()
+  const { data: clients } = useClients()
 
-  const form = useForm<BookingFormData>({
-    resolver: zodResolver(bookingSchema),
-    defaultValues: {
-      court_id: booking?.court_id || '',
-      client_id: booking?.client_id || '',
-      start_time: booking?.start_time ? new Date(booking.start_time).toISOString().slice(0, 16) : '',
-      end_time: booking?.end_time ? new Date(booking.end_time).toISOString().slice(0, 16) : '',
-      status: booking?.status || 'PENDIENTE',
-      amount: booking?.amount || 0,
-      notes: booking?.notes || '',
-    },
+  // Agregar amount al estado inicial
+  const [formData, setFormData] = useState({
+    court_id: booking?.court_id || '',
+    client_id: booking?.client_id || '',
+    start_date: booking ? formatArgentinaDate(new Date(booking.start_time)) : formatArgentinaDate(new Date()),
+    start_time: booking ? formatArgentinaTime(new Date(booking.start_time)) : '18:00',
+    duration: booking ? calculateDuration(booking.start_time, booking.end_time) : '60',
+    status: booking?.status || 'PENDIENTE' as BookingStatus,
+    hour_price: booking?.hour_price || (courts?.find(c => c.id === booking?.court_id)?.hour_price || 0),
+    deposit_amount: booking?.deposit_amount || 0,
+    payment_method: booking?.payment_method || 'EFECTIVO' as PaymentMethod,
+    cash_amount: booking?.cash_amount || 0,
+    mercado_pago_amount: booking?.mercado_pago_amount || 0,
+    amount: booking?.amount || 0,
+    notes: booking?.notes || ''
   })
 
-  // Calcular automáticamente el end_time basado en la duración estándar
-  const updateEndTime = (startTime: string, courtType?: string) => {
-    if (!startTime) return
-    
-    const start = new Date(startTime)
-    const duration = courtType === 'FUTBOL' ? 90 : 60 // 90 mins para fútbol, 60 para pádel
-    const end = new Date(start.getTime() + duration * 60000)
-    
-    form.setValue('end_time', end.toISOString().slice(0, 16))
-  }
-
-  const handleCourtChange = (courtId: string) => {
-    const court = courts?.find(c => c.id === courtId)
-    const startTime = form.getValues('start_time')
-    
-    if (startTime && court) {
-      updateEndTime(startTime, court.type)
-    }
-
-    // Setear precio por defecto basado en el tipo de cancha
-    const defaultPrice = court?.type === 'FUTBOL' ? 15000 : 12000
-    form.setValue('amount', defaultPrice)
-  }
-
-  const handleStartTimeChange = (startTime: string) => {
-    const courtId = form.getValues('court_id')
-    const court = courts?.find(c => c.id === courtId)
-    updateEndTime(startTime, court?.type)
-  }
-
-  const handleCreateClient = async () => {
-    if (!newClientData.name.trim()) {
-      alert('El nombre del cliente es requerido')
-      return
-    }
-
-    try {
-      const client = await createClientMutation.mutateAsync(newClientData)
-      form.setValue('client_id', client.id)
-      setShowClientForm(false)
-      setNewClientData({ name: '', phone: '', email: '' })
-      setClientSearch('')
-    } catch (error) {
-      alert('Error al crear cliente: ' + (error as Error).message)
-    }
-  }
-
-  const handleSubmit = async (data: BookingFormData) => {
-    setIsSubmitting(true)
-    try {
-      // Convertir strings de fecha a ISO string
-      const submitData: CreateBookingData = {
-        ...data,
-        start_time: new Date(data.start_time).toISOString(),
-        end_time: new Date(data.end_time).toISOString(),
-        client_id: data.client_id || undefined,
-        notes: data.notes || undefined,
+  // Cargar precio de la cancha cuando se selecciona
+  useEffect(() => {
+    if (formData.court_id && courts) {
+      const selectedCourt = courts.find(c => c.id === formData.court_id)
+      if (selectedCourt && selectedCourt.hour_price > 0) {
+        setFormData(prev => ({
+          ...prev,
+          hour_price: selectedCourt.hour_price
+        }))
       }
-      await onSubmit(submitData)
-    } finally {
-      setIsSubmitting(false)
     }
-  }
+  }, [formData.court_id, courts])
 
-  const activeCourts = courts?.filter(court => court.is_active) || []
+  // Calcular amount automáticamente
+  useEffect(() => {
+    const hours = parseInt(formData.duration) / 60
+    const totalAmount = hours * formData.hour_price
+    const calculatedAmount = Math.max(0, totalAmount - formData.deposit_amount)
+
+    setFormData(prev => ({
+      ...prev,
+      amount: calculatedAmount
+    }))
+  }, [formData.duration, formData.hour_price, formData.deposit_amount])
+
+  // Calcular distribución de pagos
+  useEffect(() => {
+    if (formData.payment_method === 'EFECTIVO') {
+      setFormData(prev => ({
+        ...prev,
+        cash_amount: formData.amount,
+        mercado_pago_amount: 0
+      }))
+    } else if (formData.payment_method === 'MERCADO_PAGO') {
+      setFormData(prev => ({
+        ...prev,
+        cash_amount: 0,
+        mercado_pago_amount: formData.amount
+      }))
+    }
+  }, [formData.payment_method, formData.amount])
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    const startDateTime = new Date(`${formData.start_date}T${formData.start_time}`)
+    const endDateTime = new Date(startDateTime.getTime() + parseInt(formData.duration) * 60000)
+
+    const bookingData: CreateBookingData = {
+      court_id: formData.court_id,
+      client_id: formData.client_id || undefined,
+      start_time: startDateTime.toISOString(),
+      end_time: endDateTime.toISOString(),
+      status: formData.status,
+      amount: formData.amount,
+      payment_method: formData.payment_method,
+      cash_amount: formData.cash_amount,
+      mercado_pago_amount: formData.mercado_pago_amount,
+      hour_price: formData.hour_price,
+      deposit_amount: formData.deposit_amount,
+      notes: formData.notes
+    }
+
+    onSubmit(bookingData)
+  }
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        {/* Cancha */}
-        <FormField
-          control={form.control}
-          name="court_id"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Cancha *</FormLabel>
-              <Select onValueChange={(value) => {
-                field.onChange(value)
-                handleCourtChange(value)
-              }} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar cancha" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {activeCourts.map((court) => (
-                    <SelectItem key={court.id} value={court.id}>
-                      {court.name} ({court.type})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Cliente */}
-        <FormField
-          control={form.control}
-          name="client_id"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Cliente</FormLabel>
-              <div className="space-y-2">
-                {!showClientForm ? (
-                  <>
-                    <div className="flex space-x-2">
-                      <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                        <Input
-                          placeholder="Buscar cliente..."
-                          value={clientSearch}
-                          onChange={(e) => setClientSearch(e.target.value)}
-                          className="pl-10"
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setShowClientForm(true)}
-                      >
-                        <UserPlus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar cliente (opcional)" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="ocasional">Cliente ocasional</SelectItem>
-                        {clients?.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.name} {client.phone && `- ${client.phone}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </>
-                ) : (
-                  <div className="space-y-3 p-3 border rounded-lg bg-gray-50">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Nuevo Cliente</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowClientForm(false)}
-                      >
-                        Cancelar
-                      </Button>
-                    </div>
-                    <Input
-                      placeholder="Nombre completo *"
-                      value={newClientData.name}
-                      onChange={(e) => setNewClientData(prev => ({ ...prev, name: e.target.value }))}
-                    />
-                    <Input
-                      placeholder="Teléfono"
-                      value={newClientData.phone}
-                      onChange={(e) => setNewClientData(prev => ({ ...prev, phone: e.target.value }))}
-                    />
-                    <Input
-                      placeholder="Email"
-                      type="email"
-                      value={newClientData.email}
-                      onChange={(e) => setNewClientData(prev => ({ ...prev, email: e.target.value }))}
-                    />
-                    <Button
-                      type="button"
-                      onClick={handleCreateClient}
-                      disabled={createClientMutation.isPending}
-                      className="w-full"
-                    >
-                      {createClientMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : null}
-                      Crear Cliente
-                    </Button>
-                  </div>
-                )}
-              </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Fecha y Hora de Inicio */}
-          <FormField
-            control={form.control}
-            name="start_time"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Inicio *</FormLabel>
-                <FormControl>
-                  <Input
-                    type="datetime-local"
-                    {...field}
-                    onChange={(e) => {
-                      field.onChange(e)
-                      handleStartTimeChange(e.target.value)
-                    }}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Fecha y Hora de Fin */}
-          <FormField
-            control={form.control}
-            name="end_time"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Fin *</FormLabel>
-                <FormControl>
-                  <Input
-                    type="datetime-local"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Estado */}
-          <FormField
-            control={form.control}
-            name="status"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Estado *</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar estado" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="PENDIENTE">Pendiente</SelectItem>
-                    <SelectItem value="SEÑADO">Señado</SelectItem>
-                    <SelectItem value="PAGADO">Pagado</SelectItem>
-                    <SelectItem value="CANCELADO">Cancelado</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Monto */}
-          <FormField
-            control={form.control}
-            name="amount"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Monto *</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    {...field}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        {/* Notas */}
-        <FormField
-          control={form.control}
-          name="notes"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Notas</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Notas adicionales..."
-                  {...field}
-                  value={field.value || ''}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Botones */}
-        <div className="flex justify-end space-x-2 pt-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-            disabled={isSubmitting || isLoading}
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Información Básica */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="court_id">Cancha *</Label>
+          <Select
+            value={formData.court_id}
+            onValueChange={(value) => setFormData(prev => ({ ...prev, court_id: value }))}
+            required
           >
-            Cancelar
-          </Button>
-          <Button 
-            type="submit" 
-            disabled={isSubmitting || isLoading}
-          >
-            {(isSubmitting || isLoading) ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {booking ? 'Actualizando...' : 'Creando...'}
-              </>
-            ) : (
-              booking ? 'Actualizar Turno' : 'Crear Turno'
-            )}
-          </Button>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar cancha" />
+            </SelectTrigger>
+            <SelectContent>
+              {courts?.map((court) => (
+                <SelectItem key={court.id} value={court.id}>
+                  {court.name} ({court.type}) - ${court.hour_price}/hora
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      </form>
-    </Form>
+
+        <div className="space-y-2">
+          <Label htmlFor="client_id">Cliente</Label>
+          <Select value={formData.client_id} onValueChange={(value) => setFormData(prev => ({ ...prev, client_id: value }))}>
+            <SelectTrigger>
+              <SelectValue placeholder="Cliente ocasional" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ocasional">Cliente ocasional</SelectItem>
+              {clients?.map((client) => (
+                <SelectItem key={client.id} value={client.id}>
+                  {client.name} ({client.phone})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Fecha y Hora */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="start_date">Fecha *</Label>
+          <Input
+            type="date"
+            value={formData.start_date}
+            onChange={(e) => setFormData(prev => ({ ...prev, start_date: e.target.value }))}
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="start_time">Hora de inicio *</Label>
+          <Select
+            value={formData.start_time}
+            onValueChange={(value) => setFormData(prev => ({ ...prev, start_time: value }))}
+            required
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {timeOptions.map((time) => (
+                <SelectItem key={time} value={time}>
+                  {time}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="duration">Duración *</Label>
+          <Select
+            value={formData.duration}
+            onValueChange={(value) => setFormData(prev => ({ ...prev, duration: value }))}
+            required
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="30">30 minutos (Media hora)</SelectItem>
+              <SelectItem value="60">1 hora</SelectItem>
+              <SelectItem value="90">1 ½ horas</SelectItem>
+              <SelectItem value="120">2 horas</SelectItem>
+              <SelectItem value="150">2 ½ horas</SelectItem>
+              <SelectItem value="180">3 horas</SelectItem>
+              <SelectItem value="210">3 ½ horas</SelectItem>
+              <SelectItem value="240">4 horas</SelectItem>
+              <SelectItem value="270">4 ½ horas</SelectItem>
+              <SelectItem value="300">5 horas</SelectItem>
+              <SelectItem value="330">5 ½ horas</SelectItem>
+              <SelectItem value="360">6 horas</SelectItem>
+              <SelectItem value="390">6 ½ horas</SelectItem>
+              <SelectItem value="420">7 horas</SelectItem>
+              <SelectItem value="450">7 ½ horas</SelectItem>
+              <SelectItem value="480">8 horas</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Precios y Pagos */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <h3 className="font-semibold">Precios</h3>
+
+          <div className="space-y-2">
+            <Label htmlFor="hour_price">Precio por hora *</Label>
+            <Input
+              type="number"
+              value={formData.hour_price}
+              onChange={(e) => setFormData(prev => ({ ...prev, hour_price: Number(e.target.value) }))}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="deposit_amount">Seña (descuento)</Label>
+            <Input
+              type="number"
+              value={formData.deposit_amount}
+              onChange={(e) => setFormData(prev => ({ ...prev, deposit_amount: Number(e.target.value) }))}
+            />
+          </div>
+
+          <div className="p-3 bg-gray-50 rounded-lg">
+            <div className="flex justify-between font-semibold">
+              <span>Total a pagar:</span>
+              <span>${formData.amount.toFixed(2)}</span> {/* Ahora amount existe */}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="font-semibold">Método de Pago</h3>
+
+          <div className="space-y-2">
+            <Label htmlFor="payment_method">Forma de pago *</Label>
+            <Select value={formData.payment_method} onValueChange={(value: PaymentMethod) => setFormData(prev => ({ ...prev, payment_method: value }))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="EFECTIVO">Efectivo</SelectItem>
+                <SelectItem value="MERCADO_PAGO">Mercado Pago</SelectItem>
+                <SelectItem value="MIXTO">Mixto</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {formData.payment_method !== 'MERCADO_PAGO' && (
+            <div className="space-y-2">
+              <Label htmlFor="cash_amount">Efectivo</Label>
+              <Input
+                type="number"
+                value={formData.cash_amount}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  cash_amount: Number(e.target.value),
+                  payment_method: 'MIXTO'
+                }))}
+                disabled={formData.payment_method === 'EFECTIVO'}
+              />
+            </div>
+          )}
+
+          {formData.payment_method !== 'EFECTIVO' && (
+            <div className="space-y-2">
+              <Label htmlFor="mercado_pago_amount">Mercado Pago</Label>
+              <Input
+                type="number"
+                value={formData.mercado_pago_amount}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  mercado_pago_amount: Number(e.target.value),
+                  payment_method: 'MIXTO'
+                }))}
+                disabled={formData.payment_method === 'MERCADO_PAGO'}
+              />
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="status">Estado *</Label>
+            <Select value={formData.status} onValueChange={(value: BookingStatus) => setFormData(prev => ({ ...prev, status: value }))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PENDIENTE">Pendiente</SelectItem>
+                <SelectItem value="SEÑADO">Señado</SelectItem>
+                <SelectItem value="PAGADO">Pagado</SelectItem>
+                <SelectItem value="CANCELADO">Cancelado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* Notas */}
+      <div className="space-y-2">
+        <Label htmlFor="notes">Notas</Label>
+        <Textarea
+          value={formData.notes}
+          onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+          placeholder="Notas adicionales..."
+          rows={3}
+        />
+      </div>
+
+      {/* Botones */}
+      <div className="flex justify-end space-x-3 pt-4">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button type="submit" disabled={isLoading}>
+          {isLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+          {booking ? 'Actualizar Turno' : 'Crear Turno'}
+        </Button>
+      </div>
+    </form>
   )
 }

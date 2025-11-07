@@ -3,8 +3,9 @@ import { Client } from './clients'
 import { Court } from './courts'
 
 export type BookingStatus = 'PENDIENTE' | 'SEÑADO' | 'PAGADO' | 'CANCELADO'
+export type PaymentMethod = 'EFECTIVO' | 'MERCADO_PAGO' | 'MIXTO'
 
-export type Booking = {
+export interface Booking {
   id: string
   court_id: string
   client_id?: string
@@ -12,13 +13,34 @@ export type Booking = {
   end_time: string
   status: BookingStatus
   amount: number
+  payment_method: PaymentMethod
+  cash_amount: number
+  mercado_pago_amount: number
+  hour_price: number
+  deposit_amount: number
   notes?: string
   created_at: string
-  courts?: Court
   clients?: Client
+  courts?: Court
 }
 
-export type CreateBookingData = Omit<Booking, 'id' | 'created_at' | 'courts' | 'clients'>
+export interface CreateBookingData {
+  court_id: string
+  client_id?: string
+  start_time: string
+  end_time: string
+  status: BookingStatus
+  amount: number
+  payment_method: PaymentMethod
+  cash_amount: number
+  mercado_pago_amount: number
+  hour_price: number
+  deposit_amount: number
+  notes?: string
+}
+
+// Eliminar esta línea duplicada:
+// export type CreateBookingData = Omit<Booking, 'id' | 'created_at' | 'courts' | 'clients'>
 
 export async function getBookings(date?: string, courtId?: string): Promise<Booking[]> {
   const params = new URLSearchParams()

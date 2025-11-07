@@ -1,32 +1,33 @@
 // src/app/dashboard/bookings/page.tsx
 'use client'
 
-import { useState } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Loader2, Calendar } from 'lucide-react'
-import { useBookings } from '@/hooks/useBookings'
-import { useCourts } from '@/hooks/useCourts'
-import { useDeleteBooking } from '@/hooks/useBookings'
-import { Booking, BookingStatus } from '@/lib/api/bookings'
-import { BookingsHeader } from '@/components/bookings/BookingsHeader'
 import { BookingsFilters } from '@/components/bookings/BookingsFilters'
-import { BookingsList } from '@/components/bookings/BookingsList'
+import { BookingsHeader } from '@/components/bookings/BookingsHeader'
 import { CalendarView } from '@/components/bookings/CalendarView'
+import { BookingsList } from '@/components/bookings/BookingsList'
 import BookingDialog from '@/components/bookings/BookingDialog'
+import { Booking, BookingStatus } from '@/lib/api/bookings'
+import { Card, CardContent } from '@/components/ui/card'
+import { useDeleteBooking } from '@/hooks/useBookings'
+import { useBookings } from '@/hooks/useBookings'
+import { Loader2, Calendar } from 'lucide-react'
+import { useCourts } from '@/hooks/useCourts'
+import { useState } from 'react'
 
 type ViewMode = 'list' | 'calendar'
 type DateFilter = 'today' | 'tomorrow' | 'week' | 'month' | 'all'
 
 export default function BookingsPage() {
-  const [viewMode, setViewMode] = useState<ViewMode>('list')
+  const [statusFilter, setStatusFilter] = useState<BookingStatus | 'all'>('all')
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [dateFilter, setDateFilter] = useState<DateFilter>('today')
   const [courtFilter, setCourtFilter] = useState<string>('all')
-  const [statusFilter, setStatusFilter] = useState<BookingStatus | 'all'>('all')
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [searchTerm, setSearchTerm] = useState('')
-  const [editingBooking, setEditingBooking] = useState<Booking | null>(null)
 
   const { data: courts } = useCourts()
-  
+
   const getFilterDate = () => {
     const today = new Date()
     switch (dateFilter) {
@@ -66,12 +67,21 @@ export default function BookingsPage() {
       const clientName = booking.clients?.name?.toLowerCase() || ''
       const courtName = booking.courts?.name?.toLowerCase() || ''
       const searchLower = searchTerm.toLowerCase()
-      
+
       return clientName.includes(searchLower) || courtName.includes(searchLower)
     }
 
     return true
   }) || []
+
+  const handleNewBooking = () => {
+    setIsCreateDialogOpen(true)
+  }
+
+  const handleCreateSuccess = () => {
+    setIsCreateDialogOpen(false)
+    refetch()
+  }
 
   const handleDelete = async (booking: Booking) => {
     if (!confirm(`¿Estás seguro de eliminar el turno de ${booking.clients?.name || 'Cliente ocasional'}?`)) {
@@ -95,12 +105,17 @@ export default function BookingsPage() {
     refetch()
   }
 
+  const handleBookingClick = (booking: Booking) => {
+    setEditingBooking(booking)
+  }
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
         <BookingsHeader
           viewMode={viewMode}
           onViewModeChange={setViewMode}
+          onNewBooking={handleNewBooking}
           onBookingSuccess={handleSuccess}
         />
         <Card>
@@ -122,6 +137,7 @@ export default function BookingsPage() {
           viewMode={viewMode}
           onViewModeChange={setViewMode}
           onBookingSuccess={handleSuccess}
+          onNewBooking={handleNewBooking}
         />
         <Card>
           <CardContent className="p-6">
@@ -140,6 +156,7 @@ export default function BookingsPage() {
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onBookingSuccess={handleSuccess}
+        onNewBooking={handleNewBooking}
       />
 
       <BookingsFilters
@@ -170,26 +187,43 @@ export default function BookingsPage() {
                 <Calendar className="h-16 w-16 mx-auto mb-4 text-gray-300" />
                 <p className="text-lg font-medium">No hay turnos para mostrar</p>
                 <p className="text-sm mt-1">
-                  {searchTerm || courtFilter !== 'all' || statusFilter !== 'all' 
-                    ? 'Prueba ajustar los filtros' 
+                  {searchTerm || courtFilter !== 'all' || statusFilter !== 'all'
+                    ? 'Prueba ajustar los filtros'
                     : 'No hay reservas en el calendario'
                   }
                 </p>
               </div>
             ) : (
-              <CalendarView bookings={filteredBookings} />
+              <CalendarView
+                bookings={filteredBookings}
+                onBookingClick={handleBookingClick}
+              />
             )}
           </CardContent>
         </Card>
       )}
 
+      {/* Modal de edición */}
       {editingBooking && (
         <BookingDialog
           booking={editingBooking}
           variant="edit"
+          open={!!editingBooking} // ← Controlado por el estado
+          onOpenChange={(open) => {
+            if (!open) setEditingBooking(null) // ← Cerrar cuando se cambie a false
+          }}
           onSuccess={handleSuccess}
         />
       )}
+
+      {/* Modal para CREAR */}
+      <BookingDialog
+        variant="create"
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onSuccess={handleCreateSuccess}
+      />
+
     </div>
   )
 }

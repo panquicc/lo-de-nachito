@@ -1,51 +1,62 @@
 // src/components/bookings/CalendarView.tsx
 'use client'
 
-import { useState } from 'react'
+import { formatArgentinaTime, getArgentinaTime } from '@/lib/date-utils'
 import { Button } from '@/components/ui/button'
 import { Booking } from '@/lib/api/bookings'
+import { useState } from 'react'
 
 interface CalendarViewProps {
   bookings: Booking[]
 }
 
-export function CalendarView({ bookings }: CalendarViewProps) {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-  
+interface CalendarViewProps {
+  bookings: Booking[]
+  onBookingClick?: (booking: Booking) => void
+}
+
+export function CalendarView({ bookings, onBookingClick }: CalendarViewProps) {
+  const [selectedDate, setSelectedDate] = useState<Date>(getArgentinaTime())
+
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear()
     const month = date.getMonth()
     const firstDay = new Date(year, month, 1)
     const lastDay = new Date(year, month + 1, 0)
     const daysInMonth = lastDay.getDate()
-    
+
+    // Obtener el día de la semana del primer día (0 = Domingo, 1 = Lunes, etc.)
+    const firstDayOfWeek = firstDay.getDay()
+
     const days = []
+
+    // Agregar días vacíos del mes anterior
+    for (let i = 0; i < firstDayOfWeek; i++) {
+      days.push(null) // Días vacíos
+    }
+
+    // Agregar días del mes actual
     for (let i = 1; i <= daysInMonth; i++) {
       days.push(new Date(year, month, i))
     }
-    
+
     return days
   }
 
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('es-ES', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
   const days = getDaysInMonth(selectedDate)
-  const monthName = selectedDate.toLocaleDateString('es-ES', { 
-    month: 'long', 
-    year: 'numeric' 
+  const monthName = selectedDate.toLocaleDateString('es-AR', {
+    month: 'long',
+    year: 'numeric'
   })
 
+
   const bookingsByDate = bookings?.reduce((acc, booking) => {
-    const date = new Date(booking.start_time).toDateString()
-    if (!acc[date]) {
-      acc[date] = []
+    const date = getArgentinaTime(booking.start_time)
+    const dateKey = date.toDateString()
+    if (!acc[dateKey]) {
+      acc[dateKey] = []
     }
-    acc[date].push(booking)
+    acc[dateKey].push(booking)
     return acc
   }, {} as Record<string, Booking[]>)
 
@@ -78,51 +89,63 @@ export function CalendarView({ bookings }: CalendarViewProps) {
 
       {/* Grid del calendario */}
       <div className="grid grid-cols-7 gap-1 mb-4">
-        {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(day => (
+        {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sab'].map(day => (
           <div key={day} className="text-center font-medium text-gray-500 py-2">
             {day}
           </div>
         ))}
-        
+
         {days.map((day, index) => {
+          if (day === null) {
+            return (
+              <div
+                key={`empty-${index}`}
+                className="min-h-24 p-1 border rounded-lg bg-gray-50 border-gray-200 opacity-50"
+              >
+                {/* Celda vacía */}
+              </div>
+            )
+          }
+
           const dayBookings = getBookingsForDate(day)
-          const isToday = day.toDateString() === new Date().toDateString()
-          
+          const isToday = day.toDateString() === getArgentinaTime().toDateString()
+
           return (
             <div
               key={day.toString()}
-              className={`min-h-24 p-1 border rounded-lg ${
-                isToday ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
-              }`}
+              className={`min-h-24 p-1 border rounded-lg ${isToday ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
+                }`}
             >
-              <div className={`text-sm font-medium mb-1 ${
-                isToday ? 'text-blue-600' : 'text-gray-700'
-              }`}>
+              <div className={`text-sm font-medium mb-1 ${isToday ? 'text-blue-600' : 'text-gray-700'
+                }`}>
                 {day.getDate()}
               </div>
-              
-              <div className="space-y-1 max-h-20 overflow-y-auto">
+
+              <div className="space-y-1 max-h-20 overflow-y-auto" >
                 {dayBookings.slice(0, 3).map(booking => (
                   <div
                     key={booking.id}
-                    className={`text-xs p-1 rounded border ${
-                      booking.status === 'PAGADO' 
-                        ? 'bg-green-100 border-green-200' 
+                    className={`text-xs p-1 rounded border cursor-pointer hover:shadow-md transition-shadow ${booking.status === 'PAGADO'
+                        ? 'bg-green-100 border-green-200 hover:bg-green-200'
                         : booking.status === 'SEÑADO'
-                        ? 'bg-yellow-100 border-yellow-200'
-                        : 'bg-red-100 border-red-200'
-                    }`}
+                          ? 'bg-yellow-100 border-yellow-200 hover:bg-yellow-200'
+                          : 'bg-red-100 border-red-200 hover:bg-red-200'
+                      }`}
                     title={`${booking.courts?.name} - ${booking.clients?.name || 'Cliente ocasional'}`}
+                    onClick={(e) => {
+                      e.stopPropagation() // Evitar que se propague al día
+                      onBookingClick?.(booking)
+                    }}
                   >
                     <div className="font-medium truncate">
-                      {formatTime(booking.start_time)}
+                      {formatArgentinaTime(new Date(booking.start_time))}
                     </div>
                     <div className="truncate">
                       {booking.courts?.name}
                     </div>
                   </div>
                 ))}
-                
+
                 {dayBookings.length > 3 && (
                   <div className="text-xs text-gray-500 text-center">
                     +{dayBookings.length - 3} más
