@@ -4,15 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: Request) {
   try {
-    console.log('=== FINANCIAL ANALYTICS API CALL ===')
-    
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
     const courtType = searchParams.get('courtType')
     const paymentMethod = searchParams.get('paymentMethod')
-
-    console.log('Params:', { startDate, endDate, courtType, paymentMethod })
 
     if (!startDate || !endDate) {
       return NextResponse.json(
@@ -22,31 +18,6 @@ export async function GET(request: Request) {
     }
 
     const supabase = await createClient()
-
-    // DEBUG: Verificar autenticación
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    console.log('Auth User:', user)
-    console.log('Auth Error:', authError)
-
-    // DEBUG: Test simple de query
-    const { data: testData, error: testError } = await supabase
-      .from('bookings')
-      .select('count')
-      .limit(1)
-    
-    console.log('Test Query Error:', testError)
-    console.log('Test Query Data:', testData)
-
-    if (testError) {
-      return NextResponse.json(
-        { 
-          error: 'Database connection failed',
-          details: testError.message,
-          hint: 'RLS or authentication issue'
-        }, 
-        { status: 400 }
-      )
-    }
 
     // 1. Obtener ingresos por bookings
     let bookingsQuery = supabase
@@ -62,17 +33,8 @@ export async function GET(request: Request) {
 
     const { data: bookings, error: bookingsError } = await bookingsQuery
 
-    console.log('Bookings Query Error:', bookingsError)
-    console.log('Bookings Data Length:', bookings?.length)
-
     if (bookingsError) {
-      return NextResponse.json(
-        { 
-          error: 'Bookings query failed',
-          details: bookingsError.message 
-        }, 
-        { status: 400 }
-      )
+      return NextResponse.json({ error: bookingsError.message }, { status: 400 })
     }
 
     // 2. Obtener ingresos por ventas de productos
@@ -88,42 +50,19 @@ export async function GET(request: Request) {
 
     const { data: sales, error: salesError } = await salesQuery
 
-    console.log('Sales Query Error:', salesError)
-    console.log('Sales Data Length:', sales?.length)
-
     if (salesError) {
-      return NextResponse.json(
-        { 
-          error: 'Sales query failed',
-          details: salesError.message 
-        }, 
-        { status: 400 }
-      )
+      return NextResponse.json({ error: salesError.message }, { status: 400 })
     }
 
     // 3. Calcular métricas financieras
     const financialData = calculateFinancialMetrics(bookings || [], sales || [])
-    
-    console.log('Financial Data Calculated:', {
-      totalRevenue: financialData.summary.totalRevenue,
-      totalBookings: financialData.summary.totalBookings,
-      totalSales: financialData.summary.totalSales
-    })
 
     return NextResponse.json(financialData)
-    
   } catch (error) {
     console.error('Error en analytics financial:', error)
-    return NextResponse.json(
-      { 
-        error: 'Internal Server Error',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      }, 
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
-
 
 function calculateFinancialMetrics(bookings: any[], sales: any[]) {
   // Ingresos por bookings
