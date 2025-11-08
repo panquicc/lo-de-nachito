@@ -1,4 +1,4 @@
-// src/app/dashboard/page.tsx
+// src/app/dashboard/page.tsx (actualizado)
 import LowStockProducts from '@/components/dashboard/LowStockProducts'
 import DashboardStats from '@/components/dashboard/DashboardStats'
 import TodayBookings from '@/components/dashboard/TodayBookings'
@@ -6,16 +6,19 @@ import RecentSales from '@/components/dashboard/RecentSales'
 
 export default function DashboardPage() {
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <div className="text-sm text-gray-500">
-          {new Date().toLocaleDateString('es-ES', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-          })}
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Panel de control</h1>
+          <div className="text-xs sm:text-sm text-gray-500 mt-1 sm:mt-0">
+            {new Date().toLocaleDateString('es-ES', { 
+              weekday: 'long', 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            })}
+          </div>
         </div>
       </div>
 
@@ -23,14 +26,14 @@ export default function DashboardPage() {
       <DashboardStats />
 
       {/* Grid de contenido */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
         {/* Turnos de Hoy */}
-        <div className="lg:col-span-2">
+        <div className="xl:col-span-2">
           <TodayBookings />
         </div>
 
         {/* Ventas Recientes */}
-        <div className="lg:col-span-1">
+        <div className="xl:col-span-1">
           <RecentSales />
         </div>
       </div>

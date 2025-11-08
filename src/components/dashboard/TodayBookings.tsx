@@ -36,20 +36,20 @@ export default function TodayBookings() {
     const now = new Date()
     const bookingStart = new Date(booking.start_time)
     const bookingEnd = new Date(booking.end_time)
-    
+
     // Mostrar turnos que:
     // 1. Estén en curso (ahora entre start_time y end_time)
     // 2. O empiecen en las próximas 6 horas
     const sixHoursFromNow = new Date(now.getTime() + 6 * 60 * 60 * 1000)
-    
+
     return (now >= bookingStart && now <= bookingEnd) || // En curso
-           (bookingStart >= now && bookingStart <= sixHoursFromNow) // Próximas 6 horas
+      (bookingStart >= now && bookingStart <= sixHoursFromNow) // Próximas 6 horas
   }) || []
 
   const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('es-ES', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return new Date(dateString).toLocaleTimeString('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit'
     })
   }
 
@@ -68,7 +68,7 @@ export default function TodayBookings() {
     const now = new Date()
     const start = new Date(booking.start_time)
     const end = new Date(booking.end_time)
-    
+
     if (now < start) return 'upcoming'
     if (now >= start && now <= end) return 'in-progress'
     return 'completed'
@@ -166,14 +166,14 @@ export default function TodayBookings() {
           </Badge>
         </CardTitle>
       </CardHeader>
-      
+
       <CardContent className="flex-1 flex flex-col p-0">
         {upcomingBookings.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-gray-500">
             <MapPin className="h-12 w-12 mb-2 text-gray-300" />
             <p className="font-medium">No hay turnos próximos</p>
             <p className="text-sm text-center">
-              Hay {bookings.length} turno{bookings.length !== 1 ? 's' : ''} hoy, 
+              Hay {bookings.length} turno{bookings.length !== 1 ? 's' : ''} hoy,
               pero ninguno en las próximas horas
             </p>
           </div>
@@ -185,28 +185,27 @@ export default function TodayBookings() {
                 {upcomingBookings.map((booking) => {
                   const timeStatus = getTimeStatus(booking)
                   const bookingType = getBookingType(booking)
-                  
+
                   return (
                     <div
                       key={booking.id}
                       className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-center space-x-3 min-w-0 flex-1">
-                        <div 
-                          className={`w-2 h-10 rounded-full flex-shrink-0 ${
-                            timeStatus === 'in-progress' 
-                              ? 'bg-green-500 animate-pulse' 
-                              : bookingType === 'PADEL' 
-                                ? 'bg-blue-500' 
+                        <div
+                          className={`w-2 h-10 rounded-full flex-shrink-0 ${timeStatus === 'in-progress'
+                              ? 'bg-green-500 animate-pulse'
+                              : bookingType === 'PADEL'
+                                ? 'bg-blue-500'
                                 : 'bg-orange-500'
-                          }`} 
+                            }`}
                           title={timeStatus === 'in-progress' ? 'En curso' : bookingType}
                         />
                         <div className="min-w-0 flex-1">
                           <div className="font-medium flex items-center space-x-2">
                             <span className="truncate">{booking.courts?.name}</span>
-                            <Badge 
-                              variant="secondary" 
+                            <Badge
+                              variant="secondary"
                               className={`flex-shrink-0 ${typeColors[bookingType as keyof typeof typeColors]}`}
                             >
                               {bookingType}
@@ -225,7 +224,7 @@ export default function TodayBookings() {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="text-right flex-shrink-0 ml-2 min-w-0">
                         <div className="font-medium flex items-center justify-end space-x-1">
                           <User className="h-3 w-3 flex-shrink-0" />
@@ -234,8 +233,8 @@ export default function TodayBookings() {
                           </span>
                         </div>
                         <div className="flex items-center space-x-2 mt-1 justify-end">
-                          <Badge 
-                            variant="secondary" 
+                          <Badge
+                            variant="secondary"
                             className={statusColors[booking.status]}
                           >
                             {statusLabels[booking.status]}
@@ -254,8 +253,8 @@ export default function TodayBookings() {
             </div>
 
             {/* Resumen del día - Siempre visible */}
-            <div className="flex-shrink-0 border-t p-4 bg-gray-50/50">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="flex-shrink-0 border-t p-3 sm:p-4 bg-gray-50/50">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
                 <div>
                   <div className="text-gray-600 font-medium">Total turnos hoy:</div>
                   <div className="font-semibold">{bookings.length}</div>
@@ -267,18 +266,12 @@ export default function TodayBookings() {
                   </div>
                 </div>
               </div>
-              
+
               {/* Mini estadísticas */}
-              <div className="mt-2 flex justify-between text-xs text-gray-500">
-                <span>
-                  Pagados: {bookings.filter(b => b.status === 'PAGADO').length}
-                </span>
-                <span>
-                  Señados: {bookings.filter(b => b.status === 'SEÑADO').length}
-                </span>
-                <span>
-                  Pendientes: {bookings.filter(b => b.status === 'PENDIENTE').length}
-                </span>
+              <div className="mt-2 flex flex-wrap justify-between gap-1 text-xs text-gray-500">
+                <span>Pagados: {bookings.filter(b => b.status === 'PAGADO').length}</span>
+                <span>Señados: {bookings.filter(b => b.status === 'SEÑADO').length}</span>
+                <span>Pendientes: {bookings.filter(b => b.status === 'PENDIENTE').length}</span>
               </div>
             </div>
           </>

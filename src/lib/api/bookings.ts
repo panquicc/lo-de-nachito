@@ -39,9 +39,6 @@ export interface CreateBookingData {
   notes?: string
 }
 
-// Eliminar esta línea duplicada:
-// export type CreateBookingData = Omit<Booking, 'id' | 'created_at' | 'courts' | 'clients'>
-
 export async function getBookings(date?: string, courtId?: string): Promise<Booking[]> {
   const params = new URLSearchParams()
   if (date) params.append('date', date)

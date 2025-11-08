@@ -1,4 +1,4 @@
-// src/components/bookings/BookingDialog.ts
+// src/components/bookings/BookingDialog.tsx (actualizado)
 'use client'
 
 import {
@@ -8,9 +8,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer'
 import { BookingForm } from './BookingForm'
 import { Booking, CreateBookingData } from '@/lib/api/bookings'
 import { useCreateBooking, useUpdateBooking } from '@/hooks/useBookings'
+import { useMobile } from '@/hooks/useMobile'
 
 interface BookingDialogProps {
   booking?: Booking
@@ -27,6 +35,7 @@ export default function BookingDialog({
   onOpenChange,
   onSuccess
 }: BookingDialogProps) {
+  const isMobile = useMobile()
   const createBookingMutation = useCreateBooking()
   const updateBookingMutation = useUpdateBooking()
 
@@ -51,6 +60,38 @@ export default function BookingDialog({
 
   const isLoading = createBookingMutation.isPending || updateBookingMutation.isPending
 
+  const formContent = (
+    <BookingForm
+      booking={booking}
+      onSubmit={handleSubmit}
+      onCancel={handleCancel}
+      isLoading={isLoading}
+    />
+  )
+
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="max-h-[90vh]">
+          <DrawerHeader className="text-left">
+            <DrawerTitle className="text-xl">
+              {variant === 'create' ? 'Crear Nuevo Turno' : 'Editar Turno'}
+            </DrawerTitle>
+            <DrawerDescription>
+              {variant === 'create'
+                ? 'Completá los datos del nuevo turno.'
+                : 'Modificá los datos del turno.'
+              }
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="px-4 pb-4 overflow-y-auto flex-1">
+            {formContent}
+          </div>
+        </DrawerContent>
+      </Drawer>
+    )
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
@@ -65,13 +106,7 @@ export default function BookingDialog({
             }
           </DialogDescription>
         </DialogHeader>
-
-        <BookingForm
-          booking={booking}
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-          isLoading={isLoading}
-        />
+        {formContent}
       </DialogContent>
     </Dialog>
   )

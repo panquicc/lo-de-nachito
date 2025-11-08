@@ -13,6 +13,8 @@ import { useBookings } from '@/hooks/useBookings'
 import { Loader2, Calendar } from 'lucide-react'
 import { useCourts } from '@/hooks/useCourts'
 import { useState } from 'react'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 
 type ViewMode = 'list' | 'calendar'
 type DateFilter = 'today' | 'tomorrow' | 'week' | 'month' | 'all'
@@ -80,20 +82,52 @@ export default function BookingsPage() {
 
   const handleCreateSuccess = () => {
     setIsCreateDialogOpen(false)
+    toast.success('Turno creado correctamente')
     refetch()
   }
 
   const handleDelete = async (booking: Booking) => {
-    if (!confirm(`¿Estás seguro de eliminar el turno de ${booking.clients?.name || 'Cliente ocasional'}?`)) {
-      return
-    }
+    const clientName = booking.clients?.name || 'Cliente ocasional'
 
-    try {
-      await deleteBookingMutation.mutateAsync(booking.id)
-      refetch()
-    } catch (error) {
-      alert('Error al eliminar turno: ' + (error as Error).message)
-    }
+    toast.custom((t) => (
+      <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm w-full">
+        <div className="flex flex-col space-y-3">
+          <div className="font-medium text-gray-900">
+            ¿Eliminar turno?
+          </div>
+          <div className="text-sm text-gray-600">
+            ¿Estás seguro de eliminar el turno de {clientName}?
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => toast.dismiss(t)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={async () => {
+                toast.dismiss(t)
+                try {
+                  await deleteBookingMutation.mutateAsync(booking.id)
+                  toast.success('Turno eliminado correctamente')
+                  refetch()
+                } catch (error) {
+                  toast.error('Error al eliminar turno: ' + (error as Error).message)
+                }
+              }}
+            >
+              Eliminar
+            </Button>
+          </div>
+        </div>
+      </div>
+    ), {
+      duration: 10000,
+    })
   }
 
   const handleEdit = (booking: Booking) => {
@@ -111,7 +145,7 @@ export default function BookingsPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         <BookingsHeader
           viewMode={viewMode}
           onViewModeChange={setViewMode}
@@ -119,10 +153,10 @@ export default function BookingsPage() {
           onBookingSuccess={handleSuccess}
         />
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin mr-2" />
-              <span>Cargando turnos...</span>
+              <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin mr-2" />
+              <span className="text-sm sm:text-base">Cargando turnos...</span>
             </div>
           </CardContent>
         </Card>
@@ -131,8 +165,9 @@ export default function BookingsPage() {
   }
 
   if (error) {
+    toast.error('Error cargando turnos: ' + error.message)
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         <BookingsHeader
           viewMode={viewMode}
           onViewModeChange={setViewMode}
@@ -140,8 +175,8 @@ export default function BookingsPage() {
           onNewBooking={handleNewBooking}
         />
         <Card>
-          <CardContent className="p-6">
-            <div className="text-center text-red-600 py-8">
+          <CardContent className="p-4 sm:p-6">
+            <div className="text-center text-red-600 py-8 text-sm sm:text-base">
               Error cargando turnos: {error.message}
             </div>
           </CardContent>
@@ -151,7 +186,7 @@ export default function BookingsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <BookingsHeader
         viewMode={viewMode}
         onViewModeChange={setViewMode}
@@ -181,12 +216,12 @@ export default function BookingsPage() {
         />
       ) : (
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             {filteredBookings.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                <Calendar className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                <p className="text-lg font-medium">No hay turnos para mostrar</p>
-                <p className="text-sm mt-1">
+              <div className="text-center py-8 sm:py-12 text-gray-500">
+                <Calendar className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-3 sm:mb-4 text-gray-300" />
+                <p className="text-base sm:text-lg font-medium">No hay turnos para mostrar</p>
+                <p className="text-xs sm:text-sm mt-1">
                   {searchTerm || courtFilter !== 'all' || statusFilter !== 'all'
                     ? 'Prueba ajustar los filtros'
                     : 'No hay reservas en el calendario'
@@ -208,9 +243,9 @@ export default function BookingsPage() {
         <BookingDialog
           booking={editingBooking}
           variant="edit"
-          open={!!editingBooking} // ← Controlado por el estado
+          open={!!editingBooking}
           onOpenChange={(open) => {
-            if (!open) setEditingBooking(null) // ← Cerrar cuando se cambie a false
+            if (!open) setEditingBooking(null)
           }}
           onSuccess={handleSuccess}
         />
@@ -223,7 +258,6 @@ export default function BookingsPage() {
         onOpenChange={setIsCreateDialogOpen}
         onSuccess={handleCreateSuccess}
       />
-
     </div>
   )
 }

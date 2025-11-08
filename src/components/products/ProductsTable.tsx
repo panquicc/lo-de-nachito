@@ -1,16 +1,21 @@
-// src/components/products/ProductsTable.tsx
+// src/components/products/ProductsTable.tsx (actualizado)
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useProducts, useDeleteProduct } from '@/hooks/useProducts'
-import { Trash2, Package, Loader2, Search } from 'lucide-react'
+import { Trash2, Package, Loader2, Search, MoreVertical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Product } from '@/lib/api/products'
 import ProductDialog from './ProductDialog'
-import { toast } from 'sonner'
 import { useState } from 'react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 export default function ProductsTable() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -24,7 +29,6 @@ export default function ProductsTable() {
 
     try {
       await deleteProductMutation.mutateAsync(product.id)
-      // No necesitamos refetch() porque el hook invalida la query automáticamente
     } catch (error) {
       alert('Error al eliminar producto: ' + (error as Error).message)
     }
@@ -37,56 +41,6 @@ export default function ProductsTable() {
   const filteredProducts = products?.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   ) || []
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Inventario de Productos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between p-4 border rounded-lg animate-pulse"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
-                  <div>
-                    <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded w-24"></div>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <div className="h-6 bg-gray-200 rounded w-16"></div>
-                  <div className="flex space-x-2">
-                    <div className="w-9 h-9 bg-gray-200 rounded"></div>
-                    <div className="w-9 h-9 bg-gray-200 rounded"></div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Inventario de Productos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-red-600">
-            Error cargando productos: {error.message}
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-AR', {
@@ -106,17 +60,73 @@ export default function ProductsTable() {
     return { label: 'Activo', variant: 'default' as const }
   }
 
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-xl sm:text-2xl">Inventario de Productos</CardTitle>
+          <div className="mt-4">
+            <div className="relative max-w-md">
+              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-10 bg-gray-200 rounded animate-pulse pl-10"></div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between p-3 border rounded-lg animate-pulse"
+              >
+                <div className="flex items-center space-x-3 flex-1">
+                  <div className="w-8 h-8 bg-gray-200 rounded-full flex-shrink-0"></div>
+                  <div className="flex-1">
+                    <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-20"></div>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="h-6 bg-gray-200 rounded w-16"></div>
+                  <div className="flex space-x-1">
+                    <div className="w-8 h-8 bg-gray-200 rounded"></div>
+                    <div className="w-8 h-8 bg-gray-200 rounded"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl sm:text-2xl">Inventario de Productos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-red-600">
+            Error cargando productos: {error.message}
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>Inventario de Productos</span>
-          <Badge variant="outline" className="ml-2">
-            {filteredProducts.length} productos
+      <CardHeader className="pb-3">
+        <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <span className="text-xl sm:text-2xl">Inventario de Productos</span>
+          <Badge variant="outline" className="self-start sm:self-auto">
+            {filteredProducts.length} producto{filteredProducts.length !== 1 ? 's' : ''}
           </Badge>
         </CardTitle>
         <div className="mt-4">
-          <div className="relative">
+          <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
               placeholder="Buscar productos..."
@@ -131,12 +141,13 @@ export default function ProductsTable() {
         {!filteredProducts || filteredProducts.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <Package className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-            <p>
+            <p className="text-sm sm:text-base">
               {searchTerm ? 'No se encontraron productos' : 'No hay productos registrados'}
             </p>
             {searchTerm && (
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="mt-2"
                 onClick={() => setSearchTerm('')}
               >
@@ -145,55 +156,101 @@ export default function ProductsTable() {
             )}
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {filteredProducts.map((product) => {
               const stockStatus = getStockStatus(product)
               const isDeleting = deleteProductMutation.isPending && deleteProductMutation.variables === product.id
-              
+
               return (
                 <div
                   key={product.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  <div className="flex items-center space-x-4">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${
-                      !product.is_active ? 'bg-gray-400' : 
+                  {/* Información del producto */}
+                  <div className="flex items-center space-x-3 min-w-0 flex-1">
+                    {/* Ícono del producto */}
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white flex-shrink-0 ${!product.is_active ? 'bg-gray-400' :
                       product.stock === 0 ? 'bg-red-500' :
-                      product.stock && product.stock < 10 ? 'bg-orange-500' : 'bg-blue-500'
-                    }`}>
-                      <Package className="h-5 w-5" />
+                        product.stock && product.stock < 10 ? 'bg-orange-500' : 'bg-blue-500'
+                      }`}>
+                      <Package className="h-4 w-4" />
                     </div>
-                    <div>
-                      <div className="font-medium">{product.name}</div>
-                      <div className="text-sm text-gray-500">
-                        {formatPrice(product.price)} • Stock: {formatStock(product.stock || null)}
+
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-sm sm:text-base truncate">
+                        {product.name}
+                      </div>
+                      <div className="text-xs text-gray-500 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
+                        <span className="font-semibold text-green-600">
+                          {formatPrice(product.price)}
+                        </span>
+                        <span className="hidden sm:inline">•</span>
+                        <span>Stock: {formatStock(product.stock || null)}</span>
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center space-x-4">
-                    <Badge variant={stockStatus.variant}>
+
+                  {/* Estado y acciones */}
+                  <div className="flex items-center space-x-2 flex-shrink-0 ml-2">
+                    {/* Badge de estado - siempre visible */}
+                    <Badge variant={stockStatus.variant} className="hidden xs:inline-flex">
                       {stockStatus.label}
                     </Badge>
-                    
-                    <div className="flex items-center space-x-2">
-                      <ProductDialog 
-                        product={product} 
+
+                    {/* Versión desktop - botones separados */}
+                    <div className="hidden sm:flex items-center space-x-1">
+                      <ProductDialog
+                        product={product}
                         variant="edit"
                         onSuccess={handleSuccess}
                       />
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => handleDelete(product)}
                         disabled={isDeleting}
+                        className="h-8 w-8 p-0"
                       >
                         {isDeleting ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Loader2 className="h-3 w-3 animate-spin" />
                         ) : (
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3 w-3" />
                         )}
                       </Button>
+                    </div>
+
+                    {/* Versión móvil - dropdown */}
+                    <div className="sm:hidden">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <div className="flex items-center cursor-pointer">
+                              <ProductDialog
+                                product={product}
+                                variant="edit"
+                                onSuccess={handleSuccess}
+                              />
+                            </div>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDelete(product)}
+                            disabled={isDeleting}
+                            className="text-red-600"
+                          >
+                            {isDeleting ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4 mr-2" />
+                            )}
+                            Eliminar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </div>
