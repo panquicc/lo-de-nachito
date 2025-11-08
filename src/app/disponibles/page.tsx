@@ -1,4 +1,4 @@
-// src/app/disponibles/page.tsx
+// src/app/disponibles/page.tsx 
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,13 +8,14 @@ import { DateCalendar } from '@/components/availability/DateCalendar'
 import { useCourts } from '@/hooks/useCourts'
 import { Badge } from '@/components/ui/badge'
 import { MapPin } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useRef } from 'react' // ← Agregar useRef
 
 export default function DisponiblesPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [selectedSlots, setSelectedSlots] = useState<string[]>([])
   const [selectedCourt, setSelectedCourt] = useState<string>('')
   const [showSlotsModal, setShowSlotsModal] = useState(false)
+  const step2Ref = useRef<HTMLDivElement>(null) // ← Agregar referencia
 
   const { data: courts, isLoading } = useCourts()
 
@@ -26,7 +27,20 @@ export default function DisponiblesPage() {
   const handleCloseModal = () => {
     setShowSlotsModal(false)
     setSelectedSlots([])
-  } 
+  }
+
+  // ← Nueva función para manejar selección de cancha
+  const handleCourtSelect = (courtId: string) => {
+    setSelectedCourt(courtId)
+    
+    // Hacer scroll al paso 2 después de un pequeño delay
+    setTimeout(() => {
+      step2Ref.current?.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      })
+    }, 100)
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 py-4 md:py-8">
@@ -63,7 +77,7 @@ export default function DisponiblesPage() {
               <CourtSelection
                 courts={courts || []}
                 selectedCourt={selectedCourt}
-                onCourtSelect={setSelectedCourt}
+                onCourtSelect={handleCourtSelect} // ← Usar nueva función
                 isLoading={isLoading}
               />
             </CardContent>
@@ -71,7 +85,10 @@ export default function DisponiblesPage() {
 
           {/* Paso 2: Selección de Fecha */}
           {selectedCourt && (
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm">
+            <Card 
+              ref={step2Ref} // ← Agregar referencia aquí
+              className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm"
+            >
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-3 text-2xl">
                   <div className="flex items-center justify-center w-8 h-8 bg-green-600 text-white rounded-full text-sm">
@@ -99,7 +116,6 @@ export default function DisponiblesPage() {
             onClose={handleCloseModal}
             selectedSlots={selectedSlots}
             onSlotSelect={setSelectedSlots}
-
           />
         )}
       </div>
