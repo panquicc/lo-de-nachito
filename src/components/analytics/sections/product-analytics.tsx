@@ -162,6 +162,43 @@ export function ProductAnalytics({ dateRange }: ProductAnalyticsProps) {
         </Card>
       </div>
 
+      {/* Resumen de Rentabilidad */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Producto Más Vendido</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {summary.bestSellingProduct && (
+              <div className="space-y-2">
+                <div className="font-medium">{summary.bestSellingProduct.productName}</div>
+                <div className="text-2xl font-bold">{summary.bestSellingProduct.quantity} unidades</div>
+                <div className="text-sm text-muted-foreground">
+                  {formatCurrency(summary.bestSellingProduct.revenue)} en ventas
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Mayor Ganancia</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {summary.highestRevenueProduct && (
+              <div className="space-y-2">
+                <div className="font-medium">{summary.highestRevenueProduct.productName}</div>
+                <div className="text-2xl font-bold">{formatCurrency(summary.highestRevenueProduct.revenue)}</div>
+                <div className="text-sm text-muted-foreground">
+                  {summary.highestRevenueProduct.quantity} unidades vendidas
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Productos más vendidos */}
       <Card>
         <CardHeader>
@@ -203,43 +240,6 @@ export function ProductAnalytics({ dateRange }: ProductAnalyticsProps) {
           </div>
         </CardContent>
       </Card>
-
-      {/* Resumen de Rentabilidad */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Producto Más Vendido</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {summary.bestSellingProduct && (
-              <div className="space-y-2">
-                <div className="font-medium">{summary.bestSellingProduct.productName}</div>
-                <div className="text-2xl font-bold">{summary.bestSellingProduct.quantity} unidades</div>
-                <div className="text-sm text-muted-foreground">
-                  {formatCurrency(summary.bestSellingProduct.revenue)} en ventas
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Mayor Revenue</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {summary.highestRevenueProduct && (
-              <div className="space-y-2">
-                <div className="font-medium">{summary.highestRevenueProduct.productName}</div>
-                <div className="text-2xl font-bold">{formatCurrency(summary.highestRevenueProduct.revenue)}</div>
-                <div className="text-sm text-muted-foreground">
-                  {summary.highestRevenueProduct.quantity} unidades vendidas
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
     </div>
   )
 }
