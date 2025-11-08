@@ -4,8 +4,8 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { Button } from "@/components/ui/button"
 import { DateRange } from "react-day-picker"
 import { Calendar } from "lucide-react"
-import { es } from "date-fns/locale"
 import { format } from "date-fns"
+import { es } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 
 interface FilterBarProps {
@@ -60,9 +60,20 @@ export function FilterBar({ dateRange, onDateRangeChange, onQuickFilter }: Filte
         <Button
           variant="outline"
           size="sm"
+          onClick={() => onQuickFilter(0)}
+          className={cn(
+            dateRange?.from?.getTime() === new Date().setDate(new Date().getDate()) &&
+            "bg-gray-100 border-gray-300"
+          )}
+        >
+          Hoy
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => onQuickFilter(7)}
           className={cn(
-            dateRange?.from?.getTime() === new Date().setDate(new Date().getDate() - 7) && 
+            dateRange?.from?.getTime() === new Date().setDate(new Date().getDate() - 7) &&
             "bg-gray-100 border-gray-300"
           )}
         >
@@ -73,7 +84,7 @@ export function FilterBar({ dateRange, onDateRangeChange, onQuickFilter }: Filte
           size="sm"
           onClick={() => onQuickFilter(30)}
           className={cn(
-            dateRange?.from?.getTime() === new Date().setDate(new Date().getDate() - 30) && 
+            dateRange?.from?.getTime() === new Date().setDate(new Date().getDate() - 30) &&
             "bg-gray-100 border-gray-300"
           )}
         >
@@ -84,7 +95,7 @@ export function FilterBar({ dateRange, onDateRangeChange, onQuickFilter }: Filte
           size="sm"
           onClick={() => onQuickFilter(-1)}
           className={cn(
-            dateRange?.from?.getDate() === 1 && 
+            dateRange?.from?.getDate() === 1 &&
             dateRange?.from?.getMonth() === new Date().getMonth() &&
             "bg-gray-100 border-gray-300"
           )}

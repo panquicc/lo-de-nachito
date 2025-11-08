@@ -20,6 +20,21 @@ export interface Product {
   components?: ProductComponent[]
 }
 
+export interface ProductComponent {
+  id: string
+  quantity_required: number
+  component: Product
+}
+
+export interface AddComponentData {
+  component_product_id: string
+  quantity_required: number
+}
+
+export interface UpdateComponentData {
+  quantity_required: number
+}
+
 export async function getProducts(): Promise<Product[]> {
   const response = await fetch('/api/products')
   
@@ -73,6 +88,81 @@ export async function deleteProduct(id: string): Promise<{ success: boolean }> {
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error || 'Failed to delete product')
+  }
+
+  return response.json()
+}
+
+// Agregar estas funciones al archivo existente
+export async function getProductComponents(productId: string): Promise<ProductComponent[]> {
+  const response = await fetch(`/api/products/${productId}/components`)
+  
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Error al obtener componentes del producto')
+  }
+
+  return response.json()
+}
+
+export async function addProductComponent(
+  productId: string, 
+  componentData: AddComponentData
+): Promise<ProductComponent> {
+  const response = await fetch(`/api/products/${productId}/components`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(componentData),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Error al agregar componente')
+  }
+
+  return response.json()
+}
+
+export async function updateProductComponent(
+  productId: string,
+  componentId: string,
+  updateData: UpdateComponentData
+): Promise<ProductComponent> {
+  const response = await fetch(
+    `/api/products/${productId}/components/${componentId}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updateData),
+    }
+  )
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Error al actualizar componente')
+  }
+
+  return response.json()
+}
+
+export async function deleteProductComponent(
+  productId: string,
+  componentId: string
+): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(
+    `/api/products/${productId}/components/${componentId}`,
+    {
+      method: 'DELETE',
+    }
+  )
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Error al eliminar componente')
   }
 
   return response.json()

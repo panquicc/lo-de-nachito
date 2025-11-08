@@ -1,7 +1,7 @@
 // src/components/products/ProductForm.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
@@ -18,8 +18,11 @@ import {
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Plus, Trash2, Package } from 'lucide-react'
 import { Product } from '@/lib/api/products'
+import { useProductComponentsManagement } from '@/hooks/useProductComponents'
+import { useProducts } from '@/hooks/useProducts'
+import { Badge } from '@/components/ui/badge'
 
 // Schema actualizado con nuevos campos
 const productSchema = z.object({
@@ -43,10 +46,33 @@ interface ProductFormProps {
   isLoading?: boolean
 }
 
+// Estado para nuevo componente
+interface NewComponent {
+  component_product_id: string
+  quantity_required: number
+}
+
 export default function ProductForm({ product, onSubmit, onCancel, isLoading = false }: ProductFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [unlimitedStock, setUnlimitedStock] = useState(product?.stock === null)
   const [isComposite, setIsComposite] = useState(product?.is_composite || false)
+  const [newComponent, setNewComponent] = useState<NewComponent>({
+    component_product_id: '',
+    quantity_required: 1
+  })
+
+  // Hooks para gestión de componentes
+  const { 
+    components, 
+    isLoading: componentsLoading, 
+    addComponent, 
+    deleteComponent,
+    isAdding,
+    isDeleting
+  } = useProductComponentsManagement(product?.id)
+
+  // Hook para obtener productos disponibles como componentes
+  const { data: availableProducts } = useProducts()
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema) as any,
@@ -62,6 +88,13 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
       track_stock: product?.track_stock ?? true,
     },
   })
+
+  // Filtrar productos disponibles para componentes (excluir el actual y productos compuestos)
+  const availableComponents = availableProducts?.filter(p => 
+    p.id !== product?.id && 
+    p.is_active && 
+    !p.is_composite // No permitir productos compuestos como componentes
+  ) || []
 
   const handleSubmit = async (data: ProductFormData) => {
     setIsSubmitting(true)
@@ -91,6 +124,35 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
     // Si es compuesto, desactivamos track_stock
     if (checked) {
       form.setValue('track_stock', false)
+    }
+  }
+
+  const handleAddComponent = async () => {
+    if (!newComponent.component_product_id || !newComponent.quantity_required) {
+      alert('Selecciona un producto y especifica la cantidad')
+      return
+    }
+
+    try {
+      await addComponent(newComponent)
+      setNewComponent({
+        component_product_id: '',
+        quantity_required: 1
+      })
+    } catch (error) {
+      console.error('Error agregando componente:', error)
+    }
+  }
+
+  const handleDeleteComponent = async (componentId: string) => {
+    if (!confirm('¿Estás seguro de eliminar este componente?')) {
+      return
+    }
+
+    try {
+      await deleteComponent(componentId)
+    } catch (error) {
+      console.error('Error eliminando componente:', error)
     }
   }
 
@@ -233,11 +295,15 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
                 <Switch
                   checked={unlimitedStock}
                   onCheckedChange={handleUnlimitedStockChange}
+                  disabled={isComposite}
                 />
-                <FormLabel className="!mt-0">Stock ilimitado</FormLabel>
+                <FormLabel className="!mt-0">
+                  Stock ilimitado
+                  {isComposite && " (No disponible para productos compuestos)"}
+                </FormLabel>
               </div>
               
-              {!unlimitedStock && (
+              {!unlimitedStock && !isComposite && (
                 <FormField
                   control={form.control}
                   name="stock"
@@ -263,11 +329,130 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
             <FormDescription>
               {unlimitedStock 
                 ? 'El producto siempre estará disponible' 
+                : isComposite
+                ? 'El stock se calcula automáticamente según los componentes'
                 : 'Cantidad disponible en inventario'
               }
             </FormDescription>
           </FormItem>
         </div>
+
+        {/* Gestión de Componentes (solo para productos compuestos) */}
+        {product?.id && isComposite && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Componentes del Producto</h3>
+            
+            <div className="border rounded-lg p-4 space-y-4">
+              {/* Lista de componentes existentes */}
+              {componentsLoading ? (
+                <div className="text-center py-4">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                  <p className="text-sm text-muted-foreground mt-2">Cargando componentes...</p>
+                </div>
+              ) : components.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  <Package className="h-8 w-8 mx-auto mb-2" />
+                  <p>No hay componentes agregados</p>
+                  <p className="text-sm">Agrega los productos que forman parte de este producto compuesto</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {components.map((component) => (
+                    <div 
+                      key={component.id} 
+                      className="flex items-center justify-between p-3 border rounded-lg bg-gray-50"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <Package className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium">{component.component.name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            Stock: {component.component.stock ?? 'Ilimitado'}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-4">
+                        <Badge variant="outline">
+                          {component.quantity_required} {component.quantity_required === 1 ? 'unidad' : 'unidades'}
+                        </Badge>
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteComponent(component.id)}
+                          disabled={isDeleting}
+                        >
+                          {isDeleting ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Formulario para agregar nuevo componente */}
+              <div className="border-t pt-4">
+                <h4 className="font-medium mb-3">Agregar Componente</h4>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Select
+                    value={newComponent.component_product_id}
+                    onValueChange={(value) => setNewComponent(prev => ({
+                      ...prev,
+                      component_product_id: value
+                    }))}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Seleccionar producto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableComponents.map((product) => (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.name} - Stock: {product.stock ?? 'Ilimitado'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Input
+                    type="number"
+                    step="0.001"
+                    min="0.001"
+                    placeholder="Cantidad"
+                    value={newComponent.quantity_required}
+                    onChange={(e) => setNewComponent(prev => ({
+                      ...prev,
+                      quantity_required: parseFloat(e.target.value) || 0
+                    }))}
+                    className="w-32"
+                  />
+                  
+                  <Button
+                    type="button"
+                    onClick={handleAddComponent}
+                    disabled={isAdding || !newComponent.component_product_id}
+                  >
+                    {isAdding ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4" />
+                    )}
+                    Agregar
+                  </Button>
+                </div>
+                <FormDescription className="mt-2">
+                  Ej: Para un "Fernet", agregar "Coca-Cola" con cantidad 1 y "Fernet Branca" con cantidad 0.3
+                </FormDescription>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Configuraciones Avanzadas */}
         <div className="space-y-4">
@@ -287,6 +472,11 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
                       : 'Producto individual que se vende directamente'
                     }
                   </FormDescription>
+                  {field.value && product?.id && (
+                    <FormDescription className="text-blue-600 font-medium">
+                      Los componentes se gestionan arriba ↓
+                    </FormDescription>
+                  )}
                 </div>
                 <FormControl>
                   <Switch
