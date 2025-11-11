@@ -2,7 +2,10 @@
 'use client'
 
 import { Booking, CreateBookingData, BookingStatus, PaymentMethod } from '@/lib/api/bookings'
-import { formatArgentinaDate, formatArgentinaTime } from '@/lib/date-utils'
+import { useBookingValidation } from '@/hooks/useBookingValidation'
+import { InputMoneda } from '@/components/ui/input-moneda'
+import { AlertTriangle, Loader2 } from 'lucide-react'
+import { ArgentinaDateUtils } from '@/lib/date-utils'
 import { Textarea } from '@/components/ui/textarea'
 import { useClients } from '@/hooks/useClients'
 import { Button } from '@/components/ui/button'
@@ -10,7 +13,6 @@ import { useCourts } from '@/hooks/useCourts'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useState, useEffect } from 'react'
-import { Loader2 } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -18,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { toast } from 'sonner'
 
 interface BookingFormProps {
   booking?: Booking
@@ -50,13 +53,15 @@ const timeOptions = generateTimeOptions()
 export function BookingForm({ booking, onSubmit, onCancel, isLoading = false }: BookingFormProps) {
   const { data: courts } = useCourts()
   const { data: clients } = useClients()
+  const { checkAvailability, isChecking } = useBookingValidation()
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null)
 
   // Agregar amount al estado inicial
   const [formData, setFormData] = useState({
     court_id: booking?.court_id || '',
     client_id: booking?.client_id || '',
-    start_date: booking ? formatArgentinaDate(new Date(booking.start_time)) : formatArgentinaDate(new Date()),
-    start_time: booking ? formatArgentinaTime(new Date(booking.start_time)) : '18:00',
+    start_date: booking ? ArgentinaDateUtils.formatDateForInput(new Date(booking.start_time)) : ArgentinaDateUtils.formatDateForInput(new Date()),
+    start_time: booking ? ArgentinaDateUtils.formatTime(new Date(booking.start_time)) : '18:00',
     duration: booking ? calculateDuration(booking.start_time, booking.end_time) : '60',
     status: booking?.status || 'PENDIENTE' as BookingStatus,
     hour_price: booking?.hour_price || (courts?.find(c => c.id === booking?.court_id)?.hour_price || 0),
@@ -67,6 +72,75 @@ export function BookingForm({ booking, onSubmit, onCancel, isLoading = false }: 
     amount: booking?.amount || 0,
     notes: booking?.notes || ''
   })
+
+  // Verificar disponibilidad cuando cambien los horarios
+  useEffect(() => {
+    const verifyAvailability = async () => {
+      if (!formData.court_id || !formData.start_date || !formData.start_time || !formData.duration) {
+        setAvailabilityError('')
+        return
+      }
+
+      try {
+        // Crear fecha de forma más robusta
+        const [year, month, day] = formData.start_date.split('-').map(Number);
+        const [hour, minute] = formData.start_time.split(':').map(Number);
+
+        // Validar partes
+        if (!year || !month || !day || isNaN(hour) || isNaN(minute)) {
+          setAvailabilityError('Fecha u hora inválida');
+          return;
+        }
+
+        // Crear fecha local (asumiendo que es hora argentina)
+        const localStartDate = new Date(year, month - 1, day, hour, minute);
+        if (isNaN(localStartDate.getTime())) {
+          setAvailabilityError('Fecha inválida');
+          return;
+        }
+
+        const durationMs = parseInt(formData.duration) * 60000;
+        const localEndDate = new Date(localStartDate.getTime() + durationMs);
+
+        if (isNaN(localEndDate.getTime())) {
+          setAvailabilityError('Duración inválida');
+          return;
+        }
+
+        // DEBUG: Ver qué fechas estamos creando
+        console.log('🕒 DEBUG Fechas:');
+        console.log('Input:', `${formData.start_date}T${formData.start_time}`);
+        console.log('Local Start:', localStartDate.toString());
+        console.log('Local End:', localEndDate.toString());
+
+        // Convertir a UTC para la validación
+        const startUTC = ArgentinaDateUtils.localToUTC(localStartDate);
+        const endUTC = ArgentinaDateUtils.localToUTC(localEndDate);
+
+        console.log('UTC Start:', startUTC.toString());
+        console.log('UTC End:', endUTC.toString());
+
+        const conflict = await checkAvailability(
+          formData.court_id,
+          startUTC.toISOString(),
+          endUTC.toISOString(),
+          booking?.id
+        )
+
+        if (conflict.isConflict) {
+          setAvailabilityError(conflict.message || 'La cancha no está disponible en este horario')
+        } else {
+          setAvailabilityError('')
+        }
+      } catch (error) {
+        console.error('Error verificando disponibilidad:', error)
+        setAvailabilityError('Error al verificar disponibilidad')
+      }
+    }
+
+    const timeoutId = setTimeout(verifyAvailability, 500)
+    return () => clearTimeout(timeoutId)
+  }, [formData.court_id, formData.start_date, formData.start_time, formData.duration, booking?.id])
 
   // Cargar precio de la cancha cuando se selecciona
   useEffect(() => {
@@ -93,6 +167,31 @@ export function BookingForm({ booking, onSubmit, onCancel, isLoading = false }: 
     }))
   }, [formData.duration, formData.hour_price, formData.deposit_amount])
 
+  // Unificar la lógica de pagos en los handlers
+  const updatePaymentDistribution = (paymentMethod: PaymentMethod, amount: number) => {
+    switch (paymentMethod) {
+      case 'EFECTIVO':
+        return { cash_amount: amount, mercado_pago_amount: 0 }
+      case 'MERCADO_PAGO':
+        return { cash_amount: 0, mercado_pago_amount: amount }
+      case 'MIXTO':
+        // Para mixto, mantener la proporción actual o dividir equitativamente
+        const currentTotal = formData.cash_amount + formData.mercado_pago_amount
+        if (currentTotal === 0) {
+          const half = amount / 2
+          return { cash_amount: half, mercado_pago_amount: half }
+        }
+        // Mantener la proporción actual
+        const ratio = formData.cash_amount / currentTotal
+        return {
+          cash_amount: amount * ratio,
+          mercado_pago_amount: amount * (1 - ratio)
+        }
+      default:
+        return {}
+    }
+  }
+
   // Calcular distribución de pagos
   useEffect(() => {
     if (formData.payment_method === 'EFECTIVO') {
@@ -113,12 +212,17 @@ export function BookingForm({ booking, onSubmit, onCancel, isLoading = false }: 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (availabilityError) {
+      toast.error('Por favor corrige el conflicto de horario antes de enviar.')
+      return
+    }
+
     const startDateTime = new Date(`${formData.start_date}T${formData.start_time}`)
     const endDateTime = new Date(startDateTime.getTime() + parseInt(formData.duration) * 60000)
 
     const bookingData: CreateBookingData = {
       court_id: formData.court_id,
-      client_id: formData.client_id || undefined,
+      client_id: formData.client_id === 'ocasional' ? undefined : formData.client_id || undefined,
       start_time: startDateTime.toISOString(),
       end_time: endDateTime.toISOString(),
       status: formData.status,
@@ -240,34 +344,49 @@ export function BookingForm({ booking, onSubmit, onCancel, isLoading = false }: 
         </div>
       </div>
 
+      {/* Mostrar error de disponibilidad */}
+      {availabilityError && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+          <div className="flex items-center">
+            <AlertTriangle className="h-4 w-4 text-red-500 mr-2" />
+            <span className="text-red-700 text-sm">{availabilityError}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Mostrar loading durante verificación */}
+      {isChecking && (
+        <div className="p-2 bg-blue-50 border border-blue-200 rounded-md">
+          <div className="flex items-center">
+            <Loader2 className="h-4 w-4 text-blue-500 animate-spin mr-2" />
+            <span className="text-blue-700 text-sm">Verificando disponibilidad...</span>
+          </div>
+        </div>
+      )}
+
       {/* Precios y Pagos */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <h3 className="font-semibold">Precios</h3>
 
-          <div className="space-y-2">
-            <Label htmlFor="hour_price">Precio por hora *</Label>
-            <Input
-              type="number"
-              value={formData.hour_price}
-              onChange={(e) => setFormData(prev => ({ ...prev, hour_price: Number(e.target.value) }))}
-              required
-            />
-          </div>
+          <InputMoneda
+            label='Precio por hora *'
+            value={formData.hour_price}
+            onChange={(value) => setFormData(prev => ({ ...prev, hour_price: value }))}
+            required
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="deposit_amount">Seña (descuento)</Label>
-            <Input
-              type="number"
-              value={formData.deposit_amount}
-              onChange={(e) => setFormData(prev => ({ ...prev, deposit_amount: Number(e.target.value) }))}
-            />
-          </div>
+          <InputMoneda
+            label='Seña (descuento)'
+            value={formData.deposit_amount}
+            onChange={(value) => setFormData(prev => ({ ...prev, deposit_amount: value }))}
+            placeholder='0.00'
+          />
 
           <div className="p-3 bg-gray-50 rounded-lg">
             <div className="flex justify-between font-semibold">
               <span>Total a pagar:</span>
-              <span>${formData.amount.toFixed(2)}</span> {/* Ahora amount existe */}
+              <span>${formData.amount.toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -277,7 +396,17 @@ export function BookingForm({ booking, onSubmit, onCancel, isLoading = false }: 
 
           <div className="space-y-2">
             <Label htmlFor="payment_method">Forma de pago *</Label>
-            <Select value={formData.payment_method} onValueChange={(value: PaymentMethod) => setFormData(prev => ({ ...prev, payment_method: value }))}>
+            <Select
+              value={formData.payment_method}
+              onValueChange={(value: PaymentMethod) => {
+                const distribution = updatePaymentDistribution(value, formData.amount)
+                setFormData(prev => ({
+                  ...prev,
+                  payment_method: value,
+                  ...distribution
+                }))
+              }}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -290,34 +419,47 @@ export function BookingForm({ booking, onSubmit, onCancel, isLoading = false }: 
           </div>
 
           {formData.payment_method !== 'MERCADO_PAGO' && (
-            <div className="space-y-2">
-              <Label htmlFor="cash_amount">Efectivo</Label>
-              <Input
-                type="number"
-                value={formData.cash_amount}
-                onChange={(e) => setFormData(prev => ({
+            <InputMoneda
+              label="Efectivo"
+              value={formData.cash_amount}
+              onChange={(value) => setFormData(prev => {
+                const newMercadoPago = Math.max(0, prev.amount - value)
+                return {
                   ...prev,
-                  cash_amount: Number(e.target.value),
-                  payment_method: 'MIXTO'
-                }))}
-                disabled={formData.payment_method === 'EFECTIVO'}
-              />
-            </div>
+                  cash_amount: value,
+                  mercado_pago_amount: newMercadoPago,
+                  payment_method: value > 0 && newMercadoPago > 0 ? 'MIXTO' : prev.payment_method
+                }
+              })}
+              disabled={formData.payment_method === 'EFECTIVO'}
+              placeholder="0.00"
+            />
           )}
 
           {formData.payment_method !== 'EFECTIVO' && (
-            <div className="space-y-2">
-              <Label htmlFor="mercado_pago_amount">Mercado Pago</Label>
-              <Input
-                type="number"
-                value={formData.mercado_pago_amount}
-                onChange={(e) => setFormData(prev => ({
+            <InputMoneda
+              label="Mercado Pago"
+              value={formData.mercado_pago_amount}
+              onChange={(value) => setFormData(prev => {
+                const newCashAmount = Math.max(0, prev.amount - value)
+                return {
                   ...prev,
-                  mercado_pago_amount: Number(e.target.value),
-                  payment_method: 'MIXTO'
-                }))}
-                disabled={formData.payment_method === 'MERCADO_PAGO'}
-              />
+                  mercado_pago_amount: value,
+                  cash_amount: newCashAmount,
+                  payment_method: value > 0 && newCashAmount > 0 ? 'MIXTO' : prev.payment_method
+                }
+              })}
+              disabled={formData.payment_method === 'MERCADO_PAGO'}
+              placeholder="0.00"
+            />
+          )}
+
+          {/* Mostrar advertencia si la suma no coincide */}
+          {(formData.cash_amount + formData.mercado_pago_amount).toFixed(2) !== formData.amount.toFixed(2) && (
+            <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+              <p className="text-yellow-700 text-sm">
+                La suma de los pagos (${(formData.cash_amount + formData.mercado_pago_amount).toFixed(2)}) no coincide con el total (${formData.amount.toFixed(2)})
+              </p>
             </div>
           )}
 

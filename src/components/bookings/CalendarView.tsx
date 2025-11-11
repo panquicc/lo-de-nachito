@@ -1,7 +1,7 @@
 // src/components/bookings/CalendarView.tsx (actualizado)
 'use client'
 
-import { formatArgentinaTime, getArgentinaTime } from '@/lib/date-utils'
+import { ArgentinaDateUtils } from '@/lib/date-utils'
 import { Button } from '@/components/ui/button'
 import { Booking } from '@/lib/api/bookings'
 import { useState } from 'react'
@@ -13,7 +13,7 @@ interface CalendarViewProps {
 }
 
 export function CalendarView({ bookings, onBookingClick }: CalendarViewProps) {
-  const [selectedDate, setSelectedDate] = useState<Date>(getArgentinaTime())
+  const [selectedDate, setSelectedDate] = useState<Date>(ArgentinaDateUtils.getTime())
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear()
@@ -45,7 +45,7 @@ export function CalendarView({ bookings, onBookingClick }: CalendarViewProps) {
   })
 
   const bookingsByDate = bookings?.reduce((acc, booking) => {
-    const date = getArgentinaTime(booking.start_time)
+    const date = ArgentinaDateUtils.toArgentinaTime(new Date(booking.start_time))
     const dateKey = date.toDateString()
     if (!acc[dateKey]) {
       acc[dateKey] = []
@@ -116,7 +116,7 @@ export function CalendarView({ bookings, onBookingClick }: CalendarViewProps) {
           }
 
           const dayBookings = getBookingsForDate(day)
-          const isToday = day.toDateString() === getArgentinaTime().toDateString()
+          const isToday = day.toDateString() === ArgentinaDateUtils.getTime().toDateString()
 
           return (
             <div
@@ -139,7 +139,7 @@ export function CalendarView({ bookings, onBookingClick }: CalendarViewProps) {
                           ? 'bg-yellow-100 border-yellow-200 hover:bg-yellow-200'
                           : 'bg-red-100 border-red-200 hover:bg-red-200'
                       }`}
-                    title={`${formatArgentinaTime(new Date(booking.start_time))} - ${booking.courts?.name
+                    title={`${ArgentinaDateUtils.formatTime(new Date(booking.start_time))} - ${booking.courts?.name
                       } - ${booking.clients?.name || 'Cliente ocasional'}`}
                     onClick={(e) => {
                       e.stopPropagation()
@@ -147,7 +147,7 @@ export function CalendarView({ bookings, onBookingClick }: CalendarViewProps) {
                     }}
                   >
                     <div className="font-medium truncate hidden xs:block">
-                      {formatArgentinaTime(new Date(booking.start_time))}
+                      {ArgentinaDateUtils.formatTime(new Date(booking.start_time))}
                     </div>
                     <div className="truncate">
                       {booking.courts?.name}

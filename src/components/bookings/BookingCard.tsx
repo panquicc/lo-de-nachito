@@ -2,8 +2,8 @@
 'use client'
 
 import { Trash2, Loader2, CreditCard, DollarSign, Edit, MapPin, Clock, User } from 'lucide-react'
-import { formatArgentinaDate, formatArgentinaTime } from '@/lib/date-utils'
 import { Booking, BookingStatus } from '@/lib/api/bookings'
+import { ArgentinaDateUtils } from '@/lib/date-utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
@@ -73,7 +73,7 @@ export function BookingCard({ booking, onEdit, onDelete, isDeleting = false }: B
         <div className="flex items-start space-x-3 flex-1 min-w-0">
           {/* Indicador de tipo de cancha */}
           <div className={`w-2 h-10 rounded-full flex-shrink-0 ${booking.courts?.type === 'PADEL' ? 'bg-blue-500' : 'bg-orange-500'}`} />
-          
+
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2 mb-1">
               <MapPin className="h-3 w-3 text-gray-400 flex-shrink-0" />
@@ -81,7 +81,7 @@ export function BookingCard({ booking, onEdit, onDelete, isDeleting = false }: B
             </div>
             <div className="flex items-center space-x-2 text-xs text-gray-500 mb-1">
               <Clock className="h-3 w-3 flex-shrink-0" />
-              <span>{formatArgentinaTime(new Date(booking.start_time))} - {formatArgentinaTime(new Date(booking.end_time))}</span>
+              <span>{ArgentinaDateUtils.formatTime(new Date(booking.start_time))} - {ArgentinaDateUtils.formatTime(new Date(booking.end_time))}</span>
             </div>
             <div className="flex items-center space-x-2 text-sm">
               <User className="h-3 w-3 text-gray-400 flex-shrink-0" />
@@ -110,7 +110,7 @@ export function BookingCard({ booking, onEdit, onDelete, isDeleting = false }: B
             </Badge>
           </div>
           <div className="text-sm text-gray-500 mb-1">
-            {formatArgentinaDate(new Date(booking.start_time))} • {formatArgentinaTime(new Date(booking.start_time))} - {formatArgentinaTime(new Date(booking.end_time))}
+            {ArgentinaDateUtils.formatDate(new Date(booking.start_time))} • {ArgentinaDateUtils.formatTime(new Date(booking.start_time))} - {ArgentinaDateUtils.formatTime(new Date(booking.end_time))}
           </div>
           <div className="text-sm font-medium truncate">
             {booking.clients?.name || 'Cliente ocasional'}
