@@ -22,17 +22,17 @@ interface CartProps {
   checkoutLoading: boolean
 }
 
-export function Cart({ 
-  isOpen, 
-  onClose, 
-  selectedBooking, 
-  onBookingChange, 
-  paymentMethod, 
-  onPaymentMethodChange, 
-  bookings, 
-  bookingsLoading, 
-  onCheckout, 
-  checkoutLoading 
+export function Cart({
+  isOpen,
+  onClose,
+  selectedBooking,
+  onBookingChange,
+  paymentMethod,
+  onPaymentMethodChange,
+  bookings,
+  bookingsLoading,
+  onCheckout,
+  checkoutLoading
 }: CartProps) {
   const { cart, updateQuantity, removeFromCart, clearCart, totalAmount, totalItems } = useCart()
   const { getProductStock } = useProductsWithStock()
@@ -48,12 +48,12 @@ export function Cart({
     <>
       {/* Overlay para móvil */}
       {isOpen && (
-        <div 
+        <div
           className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
           onClick={onClose}
         />
       )}
-      
+
       {/* Carrito */}
       <div className={`
         fixed lg:static right-0 top-0 bottom-0 z-50 
@@ -99,9 +99,9 @@ export function Cart({
                   <option value="">Seleccionar turno...</option>
                   {bookings?.map((booking: Booking) => (
                     <option key={booking.id} value={booking.id}>
-                      {booking.courts?.name} - {new Date(booking.start_time).toLocaleTimeString('es-ES', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
+                      {booking.courts?.name} - {new Date(booking.start_time).toLocaleTimeString('es-ES', {
+                        hour: '2-digit',
+                        minute: '2-digit'
                       })} ({booking.clients?.name || 'Cliente ocasional'})
                     </option>
                   ))}
@@ -134,13 +134,16 @@ export function Cart({
                   {cart.map((item: CartItem) => {
                     const currentStock = getProductStock(item.productId)
                     const availableStock = currentStock ?? item.stock
-                    
+
+                    // Verificar si hay problemas con este item
+                    const hasStockIssue = item.trackStock && availableStock !== undefined && item.quantity > availableStock
+                    const isOutOfStock = item.trackStock && availableStock === 0
+
                     return (
-                      <div 
-                        key={item.productId} 
-                        className={`flex items-center justify-between p-3 border rounded-lg ${
-                          item.isComposite ? 'border-blue-200 bg-blue-50' : 'bg-white'
-                        }`}
+                      <div
+                        key={item.productId}
+                        className={`flex items-center justify-between p-3 border rounded-lg ${item.isComposite ? 'border-blue-200 bg-blue-50' : 'bg-white'
+                          } ${hasStockIssue ? 'border-red-300 bg-red-50' : ''}`}
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-1">
@@ -148,18 +151,26 @@ export function Cart({
                             {item.isComposite && (
                               <Zap className="h-3 w-3 text-blue-500 flex-shrink-0" />
                             )}
+                            {hasStockIssue && (
+                              <Badge variant="destructive" className='text-xs'>
+                                Stock insuficiente
+                              </Badge>
+                            )}
                           </div>
                           <div className="text-xs text-gray-500">
                             {formatPrice(item.price)} c/u
                             {availableStock !== undefined && (
-                              <span className="ml-2">• Stock: {availableStock}</span>
+                              <span className={`ml-2 ${hasStockIssue ? 'text-red-600 font-semibold' : ''}`}>
+                                • Stock: {availableStock}
+                                {hasStockIssue && ` (necesitas ${item.quantity - availableStock} menos)`}
+                              </span>
                             )}
                           </div>
                           <div className="text-xs font-semibold">
                             Total: {formatPrice(item.price * item.quantity)}
                           </div>
                         </div>
-                        
+
                         <div className="flex items-center space-x-2 flex-shrink-0">
                           <Button
                             variant="outline"
@@ -169,11 +180,11 @@ export function Cart({
                           >
                             <Minus className="h-3 w-3" />
                           </Button>
-                          
+
                           <span className="text-sm font-medium w-8 text-center">
                             {item.quantity}
                           </span>
-                          
+
                           <Button
                             variant="outline"
                             size="sm"
@@ -182,7 +193,7 @@ export function Cart({
                           >
                             <Plus className="h-3 w-3" />
                           </Button>
-                          
+
                           <Button
                             variant="outline"
                             size="sm"
@@ -195,7 +206,7 @@ export function Cart({
                       </div>
                     )
                   })}
-                  
+
                   <Button
                     variant="outline"
                     onClick={clearCart}
@@ -217,9 +228,9 @@ export function Cart({
                     {formatPrice(totalAmount)}
                   </span>
                 </div>
-                
-                <Button 
-                  className="w-full" 
+
+                <Button
+                  className="w-full"
                   onClick={onCheckout}
                   disabled={checkoutLoading}
                   size="lg"

@@ -41,20 +41,20 @@ export default function KioskPOS() {
 
     setCart(currentCart => {
       const existingItem = currentCart.find(item => item.productId === product.id)
-      
+
       if (existingItem) {
         if (product.track_stock && product.stock !== null && existingItem.quantity + 1 > product.stock) {
           toast.warning('No hay suficiente stock disponible')
           return currentCart
         }
-        
+
         return currentCart.map(item =>
           item.productId === product.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         )
       }
-      
+
       const newCart = [...currentCart, {
         productId: product.id,
         name: product.name,
@@ -85,7 +85,7 @@ export default function KioskPOS() {
       toast.warning('No hay suficiente stock disponible')
       return
     }
-    
+
     setCart(currentCart =>
       currentCart.map(item =>
         item.productId === productId
@@ -99,13 +99,13 @@ export default function KioskPOS() {
     setCart(currentCart => {
       const removedItem = currentCart.find(item => item.productId === productId)
       const newCart = currentCart.filter(item => item.productId !== productId)
-      
+
       if (removedItem) {
         toast.info(`🗑️ ${removedItem.name} eliminado`, {
           duration: 2000,
         })
       }
-      
+
       return newCart
     })
   }
@@ -142,7 +142,7 @@ export default function KioskPOS() {
       }
 
       await createSaleMutation.mutateAsync(saleData)
-      
+
       toast.success('🎉 Venta procesada exitosamente')
       setCart([])
       setSelectedBooking('')
@@ -201,7 +201,7 @@ export default function KioskPOS() {
               {formatPrice(totalAmount)}
             </div>
           </div>
-          
+
           <div className="flex space-x-2">
             <Button
               variant="outline"
@@ -307,15 +307,14 @@ export default function KioskPOS() {
               const isOutOfStock = stockStatus === 'OUT_OF_STOCK'
               const isLowStock = stockStatus === 'LOW_STOCK'
               const isComposite = product.is_composite
-              
+
               return (
                 <Button
                   key={product.id}
                   variant={isOutOfStock ? "ghost" : "outline"}
                   disabled={isOutOfStock}
-                  className={`h-auto p-2 sm:p-3 flex flex-col items-center justify-center space-y-1 sm:space-y-2 relative ${
-                    isComposite ? 'border-blue-300 bg-blue-50' : ''
-                  } ${isOutOfStock ? 'opacity-50' : ''}`}
+                  className={`h-auto p-2 sm:p-3 flex flex-col items-center justify-center space-y-1 sm:space-y-2 relative ${isComposite ? 'border-blue-300 bg-blue-50' : ''
+                    } ${isOutOfStock ? 'opacity-50' : ''}`}
                   onClick={() => addToCart(product)}
                 >
                   {isOutOfStock && (
@@ -323,18 +322,18 @@ export default function KioskPOS() {
                       <span className="text-xs font-medium text-gray-500">SIN STOCK</span>
                     </div>
                   )}
-                  
+
                   {isComposite && (
                     <Zap className="h-3 w-3 text-blue-500 absolute top-1 right-1" />
                   )}
-                  
+
                   <div className="text-sm sm:text-lg font-semibold">
                     {formatPrice(product.price)}
                   </div>
                   <div className="text-xs sm:text-sm text-center leading-tight line-clamp-2">
                     {product.name}
                   </div>
-                  <Badge 
+                  <Badge
                     variant={getProductBadgeVariant(product)}
                     className="text-xs"
                   >
@@ -351,11 +350,11 @@ export default function KioskPOS() {
       {showCart && (
         <>
           {/* Overlay para móvil */}
-          <div 
+          <div
             className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
             onClick={() => setShowCart(false)}
           />
-          
+
           {/* Carrito */}
           <Card className={`
             fixed lg:static right-0 top-0 bottom-0 z-50 
@@ -397,9 +396,9 @@ export default function KioskPOS() {
                     <option value="">Seleccionar turno...</option>
                     {bookings?.map((booking: Booking) => (
                       <option key={booking.id} value={booking.id}>
-                        {booking.courts?.name} - {new Date(booking.start_time).toLocaleTimeString('es-ES', { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
+                        {booking.courts?.name} - {new Date(booking.start_time).toLocaleTimeString('es-ES', {
+                          hour: '2-digit',
+                          minute: '2-digit'
                         })} ({booking.clients?.name || 'Cliente ocasional'})
                       </option>
                     ))}
@@ -426,8 +425,8 @@ export default function KioskPOS() {
                   <div className="text-center py-8 text-gray-500">
                     <ShoppingCart className="h-12 w-12 mx-auto mb-2 text-gray-300" />
                     <p className="text-sm sm:text-base">El carrito está vacío</p>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="mt-2"
                       onClick={() => setShowCart(false)}
                     >
@@ -437,11 +436,10 @@ export default function KioskPOS() {
                 ) : (
                   <>
                     {cart.map((item) => (
-                      <div 
-                        key={item.productId} 
-                        className={`flex items-center justify-between p-3 border rounded-lg bg-white ${
-                          item.isComposite ? 'border-blue-200 bg-blue-50' : ''
-                        }`}
+                      <div
+                        key={item.productId}
+                        className={`flex items-center justify-between p-3 border rounded-lg bg-white ${item.isComposite ? 'border-blue-200 bg-blue-50' : ''
+                          }`}
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-1">
@@ -457,7 +455,7 @@ export default function KioskPOS() {
                             Total: {formatPrice(item.price * item.quantity)}
                           </div>
                         </div>
-                        
+
                         <div className="flex items-center space-x-2 flex-shrink-0">
                           <Button
                             variant="outline"
@@ -467,11 +465,11 @@ export default function KioskPOS() {
                           >
                             <Minus className="h-3 w-3" />
                           </Button>
-                          
+
                           <span className="text-sm font-medium w-8 text-center">
                             {item.quantity}
                           </span>
-                          
+
                           <Button
                             variant="outline"
                             size="sm"
@@ -480,7 +478,7 @@ export default function KioskPOS() {
                           >
                             <Plus className="h-3 w-3" />
                           </Button>
-                          
+
                           <Button
                             variant="outline"
                             size="sm"
@@ -492,7 +490,7 @@ export default function KioskPOS() {
                         </div>
                       </div>
                     ))}
-                    
+
                     {/* Botón vaciar carrito */}
                     <Button
                       variant="outline"
@@ -515,7 +513,7 @@ export default function KioskPOS() {
                       {formatPrice(totalAmount)}
                     </span>
                   </div>
-                  
+
                   <div className="text-xs text-gray-500">
                     {cart.some(item => item.isComposite) && (
                       <p className="text-blue-600">
@@ -523,9 +521,9 @@ export default function KioskPOS() {
                       </p>
                     )}
                   </div>
-                  
-                  <Button 
-                    className="w-full" 
+
+                  <Button
+                    className="w-full"
                     onClick={handleCheckout}
                     disabled={createSaleMutation.isPending}
                     size="lg"
