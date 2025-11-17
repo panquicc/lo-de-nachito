@@ -33,7 +33,7 @@ const allNavigation = [
   { name: 'Productos', href: '/dashboard/products', icon: Package, permission: 'manage_products' },
   { name: 'Analíticas', href: '/dashboard/analytics', icon: ChartPie, permission: 'view_analytics' },
   { name: 'Usuarios', href: '/dashboard/users', icon: User, permission: 'manage_users' },
-  { name: 'Configuración', href: '/dashboard/settings', icon: Settings, permission: 'manage_settings' },
+  /* { name: 'Configuración', href: '/dashboard/settings', icon: Settings, permission: 'manage_settings' }, */
 ]
 
 export default function DashboardSidebar({ user }: DashboardSidebarProps) {
