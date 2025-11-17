@@ -2,12 +2,12 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { useProducts, useDeleteProduct } from '@/hooks/useProducts'
 import { Trash2, Package, Loader2, Search, MoreVertical } from 'lucide-react'
+import { useProducts } from '@/hooks/useProducts'
+import { deleteProduct, Product } from '@/lib/api/products'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Product } from '@/lib/api/products'
 import ProductDialog from './ProductDialog'
 import { useState } from 'react'
 import {
@@ -16,22 +16,67 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { toast } from 'sonner'
+import { useMutation } from '@tanstack/react-query'
 
 export default function ProductsTable() {
   const [searchTerm, setSearchTerm] = useState('')
   const { data: products, isLoading, error, refetch } = useProducts()
-  const deleteProductMutation = useDeleteProduct()
+
+  const deleteProductMutation = useMutation({
+    mutationFn: (id: string) => deleteProduct(id),
+    onSuccess: () => {
+      toast.success('Producto eliminado correctamente')
+      refetch()
+    },
+    onError: (error: Error) => {
+      toast.error('Error al eliminar producto: ' + error.message)
+    }
+  })
 
   const handleDelete = async (product: Product) => {
-    if (!confirm(`¿Estás seguro de que querés eliminar "${product.name}"?`)) {
-      return
-    }
-
-    try {
-      await deleteProductMutation.mutateAsync(product.id)
-    } catch (error) {
-      alert('Error al eliminar producto: ' + (error as Error).message)
-    }
+    toast.custom((t) => (
+      <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm w-full m-auto">
+        <div className="flex flex-col space-y-3">
+          <div className="font-medium text-gray-900">
+            ¿Eliminar producto?
+          </div>
+          <div className="text-sm text-gray-600">
+            ¿Estás seguro de que deseas eliminar "{product.name}"? Esta acción no se puede deshacer.
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => toast.dismiss(t)}
+              disabled={deleteProductMutation.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                toast.dismiss(t)
+                deleteProductMutation.mutate(product.id)
+              }}
+              disabled={deleteProductMutation.isPending}
+            >
+              {deleteProductMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  Eliminando...
+                </>
+              ) : (
+                'Eliminar'
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    ), {
+      duration: 10000,
+    })
   }
 
   const handleSuccess = () => {

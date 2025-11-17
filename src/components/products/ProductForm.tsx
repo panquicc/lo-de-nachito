@@ -1,7 +1,7 @@
 // src/components/products/ProductForm.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
@@ -15,14 +15,16 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, Plus, Trash2, Package } from 'lucide-react'
-import { Product } from '@/lib/api/products'
 import { useProductComponentsManagement } from '@/hooks/useProductComponents'
+import { Loader2, Plus, Trash2, Package } from 'lucide-react'
+import { InputMoneda } from '@/components/ui/input-moneda'
+import { InputEntero } from '@/components/ui/input-entero'
 import { useProducts } from '@/hooks/useProducts'
+import { Switch } from '@/components/ui/switch'
+import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Product } from '@/lib/api/products'
 
 // Schema actualizado con nuevos campos
 const productSchema = z.object({
@@ -168,7 +170,7 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
         {/* Información Básica */}
         <div className="space-y-4">
           <h3 className="text-lg font-medium">Información Básica</h3>
-          
+
           <FormField
             control={form.control}
             name="name"
@@ -184,20 +186,19 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Precio de Venta */}
+            {/* Precio de Venta - USANDO InputMoneda */}
             <FormField
               control={form.control}
               name="price"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Precio de Venta *</FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
+                    <InputMoneda
+                      label="Precio de Venta"
+                      value={field.value}
+                      onChange={field.onChange}
                       placeholder="0.00"
-                      {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      required
                     />
                   </FormControl>
                   <FormMessage />
@@ -205,20 +206,20 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
               )}
             />
 
-            {/* Precio de Costo */}
+            {/* Precio de Costo - USANDO InputMoneda */}
             <FormField
               control={form.control}
               name="cost_price"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Precio de Costo</FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
+                    <InputMoneda
+                      label="Precio de Costo"
+                      value={field.value || 0}
+                      onChange={(value) =>
+                        field.onChange(value === 0 ? null : value)
+                      }
                       placeholder="0.00"
-                      value={field.value ?? ''}
-                      onChange={(e) => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value) || 0)}
                     />
                   </FormControl>
                   <FormDescription>
@@ -243,7 +244,10 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Rotación del Producto</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Seleccionar rotación" />
@@ -269,13 +273,12 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
               name="min_stock"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Stock Mínimo</FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
+                    <InputEntero
+                      label="Stock Mínimo"
+                      value={field.value}
+                      onChange={field.onChange}
                       placeholder="0"
-                      {...field}
-                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                     />
                   </FormControl>
                   <FormDescription>
@@ -289,7 +292,6 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
 
           {/* Stock Actual */}
           <FormItem>
-            <FormLabel>Stock Actual</FormLabel>
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
                 <Switch
@@ -302,7 +304,7 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
                   {isComposite && " (No disponible para productos compuestos)"}
                 </FormLabel>
               </div>
-              
+
               {!unlimitedStock && !isComposite && (
                 <FormField
                   control={form.control}
@@ -310,14 +312,11 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
                   render={({ field }) => (
                     <FormItem className="space-y-0">
                       <FormControl>
-                        <Input
-                          type="number"
+                        <InputEntero 
+                          label="Stock Actual"
+                          value={field.value ?? 0}
+                          onChange={field.onChange}
                           placeholder="0"
-                          value={field.value ?? ''}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
                         />
                       </FormControl>
                       <FormMessage />
@@ -327,12 +326,11 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
               )}
             </div>
             <FormDescription>
-              {unlimitedStock 
-                ? 'El producto siempre estará disponible' 
+              {unlimitedStock
+                ? "El producto siempre estará disponible"
                 : isComposite
-                ? 'El stock se calcula automáticamente según los componentes'
-                : 'Cantidad disponible en inventario'
-              }
+                ? "El stock se calcula automáticamente según los componentes"
+                : "Cantidad disponible en inventario"}
             </FormDescription>
           </FormItem>
         </div>
@@ -341,25 +339,30 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
         {product?.id && isComposite && (
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Componentes del Producto</h3>
-            
+
             <div className="border rounded-lg p-4 space-y-4">
               {/* Lista de componentes existentes */}
               {componentsLoading ? (
                 <div className="text-center py-4">
                   <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                  <p className="text-sm text-muted-foreground mt-2">Cargando componentes...</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Cargando componentes...
+                  </p>
                 </div>
               ) : components.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground">
                   <Package className="h-8 w-8 mx-auto mb-2" />
                   <p>No hay componentes agregados</p>
-                  <p className="text-sm">Agrega los productos que forman parte de este producto compuesto</p>
+                  <p className="text-sm">
+                    Agrega los productos que forman parte de este producto
+                    compuesto
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {components.map((component) => (
-                    <div 
-                      key={component.id} 
+                    <div
+                      key={component.id}
                       className="flex items-center justify-between p-3 border rounded-lg bg-gray-50"
                     >
                       <div className="flex items-center space-x-3">
@@ -367,18 +370,23 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
                           <Package className="h-4 w-4 text-blue-600" />
                         </div>
                         <div>
-                          <div className="font-medium">{component.component.name}</div>
+                          <div className="font-medium">
+                            {component.component.name}
+                          </div>
                           <div className="text-sm text-muted-foreground">
-                            Stock: {component.component.stock ?? 'Ilimitado'}
+                            Stock: {component.component.stock ?? "Ilimitado"}
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center space-x-4">
                         <Badge variant="outline">
-                          {component.quantity_required} {component.quantity_required === 1 ? 'unidad' : 'unidades'}
+                          {component.quantity_required}{" "}
+                          {component.quantity_required === 1
+                            ? "unidad"
+                            : "unidades"}
                         </Badge>
-                        
+
                         <Button
                           variant="outline"
                           size="sm"
@@ -403,10 +411,12 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Select
                     value={newComponent.component_product_id}
-                    onValueChange={(value) => setNewComponent(prev => ({
-                      ...prev,
-                      component_product_id: value
-                    }))}
+                    onValueChange={(value) =>
+                      setNewComponent((prev) => ({
+                        ...prev,
+                        component_product_id: value,
+                      }))
+                    }
                   >
                     <SelectTrigger className="flex-1">
                       <SelectValue placeholder="Seleccionar producto" />
@@ -414,25 +424,27 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
                     <SelectContent>
                       {availableComponents.map((product) => (
                         <SelectItem key={product.id} value={product.id}>
-                          {product.name} - Stock: {product.stock ?? 'Ilimitado'}
+                          {product.name} - Stock: {product.stock ?? "Ilimitado"}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  
+
                   <Input
                     type="number"
                     step="0.001"
                     min="0.001"
                     placeholder="Cantidad"
                     value={newComponent.quantity_required}
-                    onChange={(e) => setNewComponent(prev => ({
-                      ...prev,
-                      quantity_required: parseFloat(e.target.value) || 0
-                    }))}
+                    onChange={(e) =>
+                      setNewComponent((prev) => ({
+                        ...prev,
+                        quantity_required: parseFloat(e.target.value) || 0,
+                      }))
+                    }
                     className="w-32"
                   />
-                  
+
                   <Button
                     type="button"
                     onClick={handleAddComponent}
@@ -447,7 +459,8 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
                   </Button>
                 </div>
                 <FormDescription className="mt-2">
-                  Ej: Para un "Fernet", agregar "Coca-Cola" con cantidad 1 y "Fernet Branca" con cantidad 0.3
+                  Ej: Para un "Fernet", agregar "Coca-Cola" con cantidad 1 y
+                  "Fernet Branca" con cantidad 0.3
                 </FormDescription>
               </div>
             </div>
@@ -465,12 +478,13 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
             render={({ field }) => (
               <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
-                  <FormLabel className="text-base">Producto Compuesto</FormLabel>
+                  <FormLabel className="text-base">
+                    Producto Compuesto
+                  </FormLabel>
                   <FormDescription>
-                    {field.value 
-                      ? 'Este producto se arma con otros productos del inventario (ej: Fernet)' 
-                      : 'Producto individual que se vende directamente'
-                    }
+                    {field.value
+                      ? "Este producto se arma con otros productos del inventario (ej: Fernet)"
+                      : "Producto individual que se vende directamente"}
                   </FormDescription>
                   {field.value && product?.id && (
                     <FormDescription className="text-blue-600 font-medium">
@@ -498,10 +512,9 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Controlar Stock</FormLabel>
                     <FormDescription>
-                      {field.value 
-                        ? 'Se lleva control del inventario de este producto' 
-                        : 'No se controla el stock de este producto'
-                      }
+                      {field.value
+                        ? "Se lleva control del inventario de este producto"
+                        : "No se controla el stock de este producto"}
                     </FormDescription>
                   </div>
                   <FormControl>
@@ -524,10 +537,9 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
                 <div className="space-y-0.5">
                   <FormLabel className="text-base">Producto Activo</FormLabel>
                   <FormDescription>
-                    {field.value 
-                      ? 'El producto está disponible para la venta' 
-                      : 'El producto no aparecerá en el kiosco'
-                    }
+                    {field.value
+                      ? "El producto está disponible para la venta"
+                      : "El producto no aparecerá en el kiosco"}
                   </FormDescription>
                 </div>
                 <FormControl>
@@ -551,21 +563,20 @@ export default function ProductForm({ product, onSubmit, onCancel, isLoading = f
           >
             Cancelar
           </Button>
-          <Button 
-            type="submit" 
-            disabled={isSubmitting || isLoading}
-          >
-            {(isSubmitting || isLoading) ? (
+          <Button type="submit" disabled={isSubmitting || isLoading}>
+            {isSubmitting || isLoading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {product ? 'Actualizando...' : 'Creando...'}
+                {product ? "Actualizando..." : "Creando..."}
               </>
+            ) : product ? (
+              "Actualizar Producto"
             ) : (
-              product ? 'Actualizar Producto' : 'Crear Producto'
+              "Crear Producto"
             )}
           </Button>
         </div>
       </form>
     </Form>
-  )
+  );
 }

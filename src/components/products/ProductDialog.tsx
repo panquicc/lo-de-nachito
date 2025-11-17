@@ -1,4 +1,4 @@
-// src/components/products/ProductDialog.tsx (actualizado)
+// src/components/products/ProductDialog.tsx
 'use client'
 
 import { Button } from '@/components/ui/button'
