@@ -1,6 +1,7 @@
 // src/app/api/dashboard/stats/route.ts
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { lt } from 'zod'
 
 export async function GET() {
   try {
@@ -12,7 +13,8 @@ export async function GET() {
       { count: todayBookings },
       { data: todaySales },
       { count: activeClients },
-      { data: lowStockProducts }
+      { data: lowStockProducts },
+      { count: totalProducts }
     ] = await Promise.all([
       // Turnos de hoy
       supabase
@@ -38,7 +40,12 @@ export async function GET() {
         .from('products')
         .select('*')
         .lt('stock', 10)
-        .gt('stock', 0)
+        .gt('stock', 0),
+
+      // Total de productos
+      supabase
+      .from('products')
+      .select('*', { count: 'exact', head: true })
     ])
 
     const todayRevenue = todaySales?.reduce((sum, sale) => sum + sale.total_amount, 0) || 0
@@ -49,7 +56,7 @@ export async function GET() {
       activeClients: activeClients || 0,
       todayRevenue,
       lowStockCount,
-      totalProducts: 12 // Hardcodeado por ahora
+      totalProducts: totalProducts || 0
     }
 
     return NextResponse.json(stats)
