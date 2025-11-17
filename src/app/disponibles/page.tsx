@@ -5,17 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CourtSelection } from '@/components/availability/CourtSelection'
 import { TimeSlotsModal } from '@/components/availability/TimeSlotsModal'
 import { DateCalendar } from '@/components/availability/DateCalendar'
-import { useCourts } from '@/hooks/useCourts'
 import { Badge } from '@/components/ui/badge'
+import { useCourts } from '@/hooks/useCourts'
+import { useState, useRef } from 'react'
 import { MapPin } from 'lucide-react'
-import { useState, useRef } from 'react' // ← Agregar useRef
 
 export default function DisponiblesPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [selectedSlots, setSelectedSlots] = useState<string[]>([])
   const [selectedCourt, setSelectedCourt] = useState<string>('')
   const [showSlotsModal, setShowSlotsModal] = useState(false)
-  const step2Ref = useRef<HTMLDivElement>(null) // ← Agregar referencia
+  const step2Ref = useRef<HTMLDivElement>(null)
 
   const { data: courts, isLoading } = useCourts()
 
@@ -77,7 +77,7 @@ export default function DisponiblesPage() {
               <CourtSelection
                 courts={courts || []}
                 selectedCourt={selectedCourt}
-                onCourtSelect={handleCourtSelect} // ← Usar nueva función
+                onCourtSelect={handleCourtSelect}
                 isLoading={isLoading}
               />
             </CardContent>
@@ -86,7 +86,7 @@ export default function DisponiblesPage() {
           {/* Paso 2: Selección de Fecha */}
           {selectedCourt && (
             <Card 
-              ref={step2Ref} // ← Agregar referencia aquí
+              ref={step2Ref} 
               className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm"
             >
               <CardHeader className="pb-4">

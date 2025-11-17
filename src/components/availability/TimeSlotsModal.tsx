@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { useEffect } from 'react'
 
 interface TimeSlotsModalProps {
   courtId: string
@@ -48,14 +49,31 @@ export function TimeSlotsModal({
   }
 
   const getSelectedSlotsData = () => {
-    return selectedSlots.map(slotId =>
+    const slots = selectedSlots.map(slotId =>
       data?.availableSlots.find(slot => slot.start_time === slotId)
     ).filter(Boolean) as Array<{
       start_time: string
       end_time: string
       display_time: string
     }>
+
+    // Ordenar los slots por hora de inicio
+    return slots.sort((a, b) => a.start_time.localeCompare(b.start_time))
   }
+
+  // Función para ordenar los selectedSlots cuando cambian
+  const sortedSelectedSlots = selectedSlots
+    .map(slotId => data?.availableSlots.find(slot => slot.start_time === slotId))
+    .filter(Boolean)
+    .sort((a, b) => a!.start_time.localeCompare(b!.start_time))
+    .map(slot => slot!.start_time)
+
+  // Actualizar los selectedSlots ordenados cuando cambian
+  useEffect(() => {
+    if (selectedSlots.length > 0 && JSON.stringify(selectedSlots) !== JSON.stringify(sortedSelectedSlots)) {
+      onSlotSelect(sortedSelectedSlots)
+    }
+  }, [selectedSlots, data])
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
