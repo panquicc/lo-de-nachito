@@ -4,6 +4,7 @@
 import { Trash2, Phone, Mail, Search, Loader2, User, MoreVertical } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useClients, useDeleteClient } from '@/hooks/useClients'
+import { useDebounce } from '@/hooks/useDebounce'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -20,7 +21,12 @@ import {
 
 export default function ClientsTable() {
   const [searchTerm, setSearchTerm] = useState('')
-  const { data: clients, isLoading, error, refetch } = useClients(searchTerm || undefined)
+  const debouncedSearchTerm = useDebounce(searchTerm, 500)
+
+  const { data: clients, isLoading, error, refetch } = useClients(
+    debouncedSearchTerm || undefined
+  )
+
   const deleteClientMutation = useDeleteClient()
 
   const handleDelete = async (client: Client) => {
@@ -130,6 +136,12 @@ export default function ClientsTable() {
               className="pl-10"
             />
           </div>
+          {/* Agregar indicador de búsqueda en progreso */}
+          {searchTerm !== debouncedSearchTerm && (
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+            </div>
+          )}
         </div>
       </CardHeader>
       <CardContent>
