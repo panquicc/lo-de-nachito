@@ -11,29 +11,40 @@ import {
   Package,
   LogOut,
   User,
-  ChartPie
+  ChartPie,
+  Settings
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { User as SupabaseUser } from '@supabase/supabase-js'
-
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Turnos', href: '/dashboard/bookings', icon: Calendar },
-  { name: 'Clientes', href: '/dashboard/clients', icon: Users },
-  { name: 'Kiosco', href: '/dashboard/kiosk', icon: ShoppingCart },
-  { name: 'Productos', href: '/dashboard/products', icon: Package },
-  { name: 'Analíticas', href: '/dashboard/analytics', icon: ChartPie },
-]
+import { usePermissions } from '@/hooks/usePermissions'
 
 interface DashboardSidebarProps {
   user?: SupabaseUser
 }
 
+// Navegación base con todos los módulos
+const allNavigation = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
+  { name: 'Turnos', href: '/dashboard/bookings', icon: Calendar, permission: 'manage_bookings' },
+  { name: 'Clientes', href: '/dashboard/clients', icon: Users, permission: 'manage_clients' },
+  { name: 'Kiosco', href: '/dashboard/kiosk', icon: ShoppingCart, permission: 'manage_sales' },
+  { name: 'Productos', href: '/dashboard/products', icon: Package, permission: 'manage_products' },
+  { name: 'Analíticas', href: '/dashboard/analytics', icon: ChartPie, permission: 'view_analytics' },
+  { name: 'Usuarios', href: '/dashboard/users', icon: User, permission: 'manage_users' },
+  { name: 'Configuración', href: '/dashboard/settings', icon: Settings, permission: 'manage_settings' },
+]
+
 export default function DashboardSidebar({ user }: DashboardSidebarProps) {
   const pathname = usePathname()
   const { logout, isLoading } = useAuth()
+  const { hasPermission } = usePermissions()
+
+  // Filtrar navegación según permisos
+  const navigation = allNavigation.filter(item => 
+    hasPermission(item.permission as any)
+  )
 
   const handleLogout = async () => {
     await logout()
@@ -78,7 +89,7 @@ export default function DashboardSidebar({ user }: DashboardSidebarProps) {
                 {user.email}
               </p>
               <p className="truncate text-xs text-gray-400">
-                Administrador
+                <RoleBadge role={user.user_metadata?.role || 'employee'} />
               </p>
             </div>
           </div>
@@ -95,5 +106,26 @@ export default function DashboardSidebar({ user }: DashboardSidebarProps) {
         </Button>
       </div>
     </div>
+  )
+}
+
+// Componente para mostrar el rol del usuario
+function RoleBadge({ role }: { role: string }) {
+  const roleConfig = {
+    admin: { label: 'Administrador', color: 'bg-red-500' },
+    employee: { label: 'Empleado', color: 'bg-blue-500' },
+    partner: { label: 'Socio', color: 'bg-green-500' }
+  }
+
+  const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.employee
+
+  return (
+    <span className={cn(
+      "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
+      config.color,
+      "text-white"
+    )}>
+      {config.label}
+    </span>
   )
 }
