@@ -13,11 +13,11 @@ interface InputEnteroProps {
   className?: string
 }
 
-export function InputEntero({ 
-  label, 
-  value, 
-  onChange, 
-  placeholder = "0", 
+export function InputEntero({
+  label,
+  value,
+  onChange,
+  placeholder = "0",
   required = false,
   disabled = false,
   className = ""
@@ -39,12 +39,12 @@ export function InputEntero({
 
   const parseValue = (inputValue: string): number => {
     if (inputValue === '' || inputValue === '0') return 0
-    
+
     // Remover todo excepto números
     const cleaned = inputValue.replace(/[^\d]/g, '')
-    
+
     if (cleaned === '') return 0
-    
+
     const numericValue = parseInt(cleaned)
     return isNaN(numericValue) ? 0 : Math.max(0, numericValue)
   }
@@ -52,7 +52,7 @@ export function InputEntero({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value
     setDisplayValue(rawValue)
-    
+
     // Parsear y enviar el nuevo valor
     const newValue = parseValue(rawValue)
     onChange(newValue)
@@ -80,12 +80,12 @@ export function InputEntero({
     if (e.key === 'e' || e.key === 'E' || e.key === '-' || e.key === '.') {
       e.preventDefault()
     }
-    
+
     // Permitir navegación con flechas y teclas de edición
     if (['ArrowLeft', 'ArrowRight', 'Backspace', 'Delete', 'Tab'].includes(e.key)) {
       return
     }
-    
+
     // Validar que sea un carácter numérico
     if (!/[\d]/.test(e.key) && e.key !== 'Backspace') {
       e.preventDefault()
@@ -94,7 +94,7 @@ export function InputEntero({
 
   return (
     <div className={className}>
-      <Label htmlFor={label.replace(/\s+/g, '-').toLowerCase()}>
+      <Label className='mb-2' htmlFor={label.replace(/\s+/g, '-').toLowerCase()}>
         {label} {required && '*'}
       </Label>
       <div className="relative mt-1">
@@ -114,8 +114,8 @@ export function InputEntero({
           aria-describedby={`${label.replace(/\s+/g, '-').toLowerCase()}-help`}
         />
       </div>
-      <p 
-        id={`${label.replace(/\s+/g, '-').toLowerCase()}-help`} 
+      <p
+        id={`${label.replace(/\s+/g, '-').toLowerCase()}-help`}
         className="text-xs text-gray-500 mt-1"
       >
         {isEditing ? 'Escriba la cantidad' : 'Ingrese la cantidad en unidades'}

@@ -18,12 +18,12 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from '@/components/ui/drawer'
-import { Plus, Edit } from 'lucide-react'
-import { useState } from 'react'
-import ClientForm from './ClientForm'
-import { Client } from '@/lib/api/clients'
 import { useCreateClient, useUpdateClient } from '@/hooks/useClients'
 import { useMobile } from '@/hooks/useMobile'
+import { Client } from '@/lib/api/clients'
+import { Plus, Edit } from 'lucide-react'
+import ClientForm from './ClientForm'
+import { useState } from 'react'
 
 interface ClientDialogProps {
   client?: Client

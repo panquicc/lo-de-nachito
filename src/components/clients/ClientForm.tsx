@@ -14,9 +14,10 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { InputEntero } from '@/components/ui/input-entero'
 import { Input } from '@/components/ui/input'
-import { Loader2 } from 'lucide-react'
 import { Client } from '@/lib/api/clients'
+import { Loader2 } from 'lucide-react'
 
 const clientSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
@@ -82,12 +83,13 @@ export default function ClientForm({ client, onSubmit, onCancel, isLoading = fal
           name="phone"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Teléfono</FormLabel>
               <FormControl>
-                <Input 
-                  placeholder="Ej: +54 11 1234-5678" 
-                  {...field} 
-                  value={field.value || ''}
+                <InputEntero 
+                  label='Teléfono'
+                  value={field.value ? parseInt(field.value) || 0 : 0} 
+                  onChange={(val) => field.onChange(val)} 
+                  className="mt-2" 
+                  placeholder="Ej: 543764345678"
                 />
               </FormControl>
               <FormMessage />

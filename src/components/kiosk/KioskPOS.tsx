@@ -65,7 +65,7 @@ export default function KioskPOS() {
       }]
 
       // Toast de confirmación rápida
-      toast.success(`✅ ${product.name} agregado`, {
+      toast.success(`${product.name} agregado`, {
         description: `Carrito: ${newCart.reduce((sum, item) => sum + item.quantity, 0)} productos`,
         duration: 2000,
       })
@@ -143,7 +143,7 @@ export default function KioskPOS() {
 
       await createSaleMutation.mutateAsync(saleData)
 
-      toast.success('🎉 Venta procesada exitosamente')
+      toast.success('Venta procesada exitosamente')
       setCart([])
       setSelectedBooking('')
       setPaymentMethod('EFECTIVO')
@@ -244,18 +244,7 @@ export default function KioskPOS() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-xl sm:text-2xl">Carrito de Venta</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {[1, 2].map((i) => (
-                <div key={i} className="h-14 sm:h-16 bg-gray-200 rounded animate-pulse"></div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        
       </div>
     )
   }

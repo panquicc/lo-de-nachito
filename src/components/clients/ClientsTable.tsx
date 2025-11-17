@@ -1,66 +1,112 @@
-// src/components/clients/ClientsTable.tsx (actualizado)
-'use client'
+// src/components/clients/ClientsTable.tsx
+"use client";
 
-import { Trash2, Phone, Mail, Search, Loader2, User, MoreVertical } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { useClients, useDeleteClient } from '@/hooks/useClients'
-import { useDebounce } from '@/hooks/useDebounce'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Client } from '@/lib/api/clients'
-import ClientDialog from './ClientDialog'
-import { useState } from 'react'
-import Link from 'next/link'
+import {
+  Trash2,
+  Phone,
+  Mail,
+  Search,
+  Loader2,
+  User,
+  MoreVertical,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useClients, useDeleteClient } from "@/hooks/useClients";
+import { useDebounce } from "@/hooks/useDebounce";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Client } from "@/lib/api/clients";
+import ClientDialog from "./ClientDialog";
+import { useState } from "react";
+import Link from "next/link";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+} from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 
 export default function ClientsTable() {
-  const [searchTerm, setSearchTerm] = useState('')
-  const debouncedSearchTerm = useDebounce(searchTerm, 500)
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
-  const { data: clients, isLoading, error, refetch } = useClients(
-    debouncedSearchTerm || undefined
-  )
+  const {
+    data: clients,
+    isLoading,
+    error,
+    refetch,
+  } = useClients(debouncedSearchTerm || undefined);
 
-  const deleteClientMutation = useDeleteClient()
+  const deleteClientMutation = useDeleteClient();
 
   const handleDelete = async (client: Client) => {
-    if (!confirm(`¿Estás seguro de que querés eliminar a ${client.name}?`)) {
-      return
-    }
-
-    try {
-      await deleteClientMutation.mutateAsync(client.id)
-    } catch (error) {
-      alert('Error al eliminar cliente: ' + (error as Error).message)
-    }
-  }
+    toast.custom(
+      (t) => (
+        <div className="bg-white border border-gray-200 rounded shadow-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+          <div className="text-gray-900">
+            ¿Estás seguro de que deseas eliminar a{" "}
+            <strong>{client.name}</strong>?
+          </div>
+          <div className="flex space-x-2 justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => toast.dismiss(t)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={async () => {
+                toast.dismiss(t);
+                try {
+                  await deleteClientMutation.mutateAsync(client.id);
+                  toast.success("Cliente eliminado correctamente");
+                  refetch();
+                } catch (error) {
+                  toast.error(
+                    "Error al eliminar cliente: " + (error as Error).message
+                  );
+                }
+              }}
+              disabled={deleteClientMutation.isPending}
+            >
+              {deleteClientMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Eliminar"
+              )}
+            </Button>
+          </div>
+        </div>
+      ),
+      { duration: Infinity }
+    );
+  };
 
   const handleSuccess = () => {
-    refetch()
-  }
+    refetch();
+  };
 
   const getInitials = (name: string) => {
     return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
       .toUpperCase()
-      .slice(0, 2)
-  }
+      .slice(0, 2);
+  };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
-  }
+    return new Date(dateString).toLocaleDateString("es-ES", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
 
   if (isLoading) {
     return (
@@ -97,7 +143,7 @@ export default function ClientsTable() {
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   if (error) {
@@ -112,7 +158,7 @@ export default function ClientsTable() {
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -122,7 +168,7 @@ export default function ClientsTable() {
           <span className="text-xl sm:text-2xl">Lista de Clientes</span>
           {clients && (
             <Badge variant="secondary" className="self-start sm:self-auto">
-              {clients.length} cliente{clients.length !== 1 ? 's' : ''}
+              {clients.length} cliente{clients.length !== 1 ? "s" : ""}
             </Badge>
           )}
         </CardTitle>
@@ -149,14 +195,16 @@ export default function ClientsTable() {
           <div className="text-center py-8 text-gray-500">
             <User className="h-12 w-12 mx-auto mb-2 text-gray-300" />
             <p className="text-sm sm:text-base">
-              {searchTerm ? 'No se encontraron clientes' : 'No hay clientes registrados'}
+              {searchTerm
+                ? "No se encontraron clientes"
+                : "No hay clientes registrados"}
             </p>
             {searchTerm && (
               <Button
                 variant="outline"
                 size="sm"
                 className="mt-2"
-                onClick={() => setSearchTerm('')}
+                onClick={() => setSearchTerm("")}
               >
                 Limpiar búsqueda
               </Button>
@@ -187,7 +235,7 @@ export default function ClientsTable() {
                           <Phone className="h-3 w-3 flex-shrink-0" />
                           <Link
                             href={`https://wa.me/${client.phone}`}
-                            target='_blank'
+                            target="_blank"
                             className="truncate hover:text-blue-600"
                           >
                             {client.phone}
@@ -239,7 +287,11 @@ export default function ClientsTable() {
                   <div className="sm:hidden">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                        >
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -274,5 +326,5 @@ export default function ClientsTable() {
         )}
       </CardContent>
     </Card>
-  )
+  );
 }
