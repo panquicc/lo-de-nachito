@@ -28,6 +28,7 @@ const rolePermissions: Record<UserRole, Permission[]> = {
   ],
   partner: [
     'view_dashboard',
+    'view_analytics'
   ],
   employee: [
     'view_dashboard',

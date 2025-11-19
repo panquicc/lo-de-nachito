@@ -54,8 +54,21 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: salesError.message }, { status: 400 })
     }
 
-    // 3. Calcular métricas financieras
-    const financialData = calculateFinancialMetrics(bookings || [], sales || [])
+    // 3. Obtener gastos
+    const expensesQuery = supabase
+      .from('expenses')
+      .select('amount, category, date, created_at')
+      .gte('date', `${startDate}T00:00:00`)
+      .lte('date', `${endDate}T23:59:59`)
+
+    const { data: expenses, error: expensesError } = await expensesQuery
+
+    if (expensesError) {
+      return NextResponse.json({ error: expensesError.message }, { status: 400 })
+    }
+
+    // 4. Calcular métricas financieras
+    const financialData = calculateFinancialMetrics(bookings || [], sales || [], expenses || [])
 
     return NextResponse.json(financialData)
   } catch (error) {
@@ -64,10 +77,10 @@ export async function GET(request: Request) {
   }
 }
 
-function calculateFinancialMetrics(bookings: any[], sales: any[]) {
+function calculateFinancialMetrics(bookings: any[], sales: any[], expenses: any[]) {
   // Ingresos por bookings
   const bookingRevenue = bookings.reduce((sum, booking) => sum + booking.amount, 0)
-  
+
   // Ingresos por método de pago en bookings
   const bookingRevenueByMethod = bookings.reduce((acc: any, booking) => {
     const method = booking.payment_method
@@ -77,7 +90,7 @@ function calculateFinancialMetrics(bookings: any[], sales: any[]) {
 
   // Ingresos por ventas
   const productRevenue = sales.reduce((sum, sale) => sum + sale.total_amount, 0)
-  
+
   // Costos de productos vendidos
   const productCosts = sales.reduce((sum, sale) => {
     const saleCost = sale.sale_items?.reduce((itemSum: number, item: any) => {
@@ -87,11 +100,21 @@ function calculateFinancialMetrics(bookings: any[], sales: any[]) {
     return sum + saleCost
   }, 0)
 
+  // Gastos totales
+  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0)
+
+  // Gastos por categoría
+  const expensesByCategory = expenses.reduce((acc: any, expense) => {
+    const category = expense.category
+    acc[category] = (acc[category] || 0) + expense.amount
+    return acc
+  }, {})
+
   // Ingresos totales
   const totalRevenue = bookingRevenue + productRevenue
 
   // Métricas por día para el gráfico
-  const dailyBreakdown = calculateDailyBreakdown(bookings, sales, productCosts)
+  const dailyBreakdown = calculateDailyBreakdown(bookings, sales, expenses, productCosts)
 
   return {
     summary: {
@@ -99,9 +122,11 @@ function calculateFinancialMetrics(bookings: any[], sales: any[]) {
       bookingRevenue,
       productRevenue,
       productCosts,
-      netProfit: totalRevenue - productCosts,
+      totalExpenses,
+      netProfit: totalRevenue - productCosts - totalExpenses,
       totalBookings: bookings.length,
-      totalSales: sales.length
+      totalSales: sales.length,
+      totalExpensesCount: expenses.length
     },
     byPaymentMethod: {
       ...bookingRevenueByMethod,
@@ -112,21 +137,22 @@ function calculateFinancialMetrics(bookings: any[], sales: any[]) {
         return acc
       }, {})
     },
+    expensesByCategory,
     dailyBreakdown,
     period: {
-      start: bookings[0]?.created_at || sales[0]?.created_at,
-      end: bookings[bookings.length - 1]?.created_at || sales[sales.length - 1]?.created_at
+      start: bookings[0]?.created_at || sales[0]?.created_at || expenses[0]?.created_at,
+      end: bookings[bookings.length - 1]?.created_at || sales[sales.length - 1]?.created_at || expenses[expenses.length - 1]?.created_at
     }
   }
 }
 
-function calculateDailyBreakdown(bookings: any[], sales: any[], totalCosts: number) {
+function calculateDailyBreakdown(bookings: any[], sales: any[], expenses: any[], totalCosts: number) {
   const dailyMap = new Map()
 
   // Procesar bookings por día
   bookings.forEach(booking => {
     const date = new Date(booking.created_at).toISOString().split('T')[0]
-    const existing = dailyMap.get(date) || { date, revenue: 0, bookings: 0, salesCount: 0, costs: 0 }
+    const existing = dailyMap.get(date) || { date, revenue: 0, bookings: 0, salesCount: 0, costs: 0, expenses: 0 }
     existing.revenue += booking.amount
     existing.bookings += 1
     dailyMap.set(date, existing)
@@ -134,19 +160,27 @@ function calculateDailyBreakdown(bookings: any[], sales: any[], totalCosts: numb
 
   // Procesar ventas por día y distribuir costos proporcionalmente
   const totalProductRevenue = sales.reduce((sum, sale) => sum + sale.total_amount, 0)
-  
+
   sales.forEach(sale => {
     const date = new Date(sale.created_at).toISOString().split('T')[0]
-    const existing = dailyMap.get(date) || { date, revenue: 0, bookings: 0, salesCount: 0, costs: 0 }
+    const existing = dailyMap.get(date) || { date, revenue: 0, bookings: 0, salesCount: 0, costs: 0, expenses: 0 }
     existing.revenue += sale.total_amount
     existing.salesCount += 1
-    
+
     // Distribuir costos proporcionalmente al revenue de cada día
     if (totalProductRevenue > 0) {
       const revenueShare = sale.total_amount / totalProductRevenue
       existing.costs += totalCosts * revenueShare
     }
-    
+
+    dailyMap.set(date, existing)
+  })
+
+  // Procesar gastos por día
+  expenses.forEach(expense => {
+    const date = new Date(expense.date).toISOString().split('T')[0]
+    const existing = dailyMap.get(date) || { date, revenue: 0, bookings: 0, salesCount: 0, costs: 0, expenses: 0 }
+    existing.expenses += expense.amount
     dailyMap.set(date, existing)
   })
 

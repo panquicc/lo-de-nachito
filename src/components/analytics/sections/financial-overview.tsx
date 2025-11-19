@@ -13,11 +13,16 @@ interface FinancialData {
         bookingRevenue: number
         productRevenue: number
         productCosts: number
+        totalExpenses: number
         netProfit: number
         totalBookings: number
         totalSales: number
+        totalExpensesCount: number
     }
     byPaymentMethod: {
+        [key: string]: number
+    }
+    expensesByCategory: {
         [key: string]: number
     }
     dailyBreakdown: Array<{
@@ -26,7 +31,16 @@ interface FinancialData {
         bookings: number
         salesCount: number
         costs: number
+        expenses: number
     }>
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+    maintenance: 'Mantenimiento',
+    supplies: 'Insumos',
+    utilities: 'Servicios',
+    salary: 'Sueldos',
+    other: 'Otros',
 }
 
 export function FinancialOverview({ dateRange }: { dateRange: DateRange }) {
@@ -91,7 +105,7 @@ export function FinancialOverview({ dateRange }: { dateRange: DateRange }) {
         )
     }
 
-    const { summary, byPaymentMethod } = data
+    const { summary, byPaymentMethod, expensesByCategory } = data
 
     return (
         <div className="space-y-6">
@@ -102,13 +116,21 @@ export function FinancialOverview({ dateRange }: { dateRange: DateRange }) {
                     value={summary.totalRevenue}
                     format="currency"
                     description="Ingresos brutos del período"
-                    trend={10} // Podríamos calcular esto comparando con período anterior
+                    trend={10}
+                />
+                <MetricCard
+                    title="Gastos Operativos"
+                    value={summary.totalExpenses}
+                    format="currency"
+                    description={`${summary.totalExpensesCount} gastos registrados`}
+                    trend={-5}
+                    inverseTrend
                 />
                 <MetricCard
                     title="Ganancia Neta"
                     value={summary.netProfit}
                     format="currency"
-                    description="Después de costos"
+                    description="Después de costos y gastos"
                     trend={8}
                 />
                 <MetricCard
@@ -118,73 +140,26 @@ export function FinancialOverview({ dateRange }: { dateRange: DateRange }) {
                     description="Reservas confirmadas"
                     trend={5}
                 />
-                <MetricCard
-                    title="Ventas Kiosco"
-                    value={summary.totalSales}
-                    format="number"
-                    description="Transacciones en kiosco"
-                    trend={12}
-                />
             </div>
 
-            {/* Desglose de Ingresos */}
+            {/* Desglose de Ingresos y Gastos */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-sm font-medium">Ingresos por Fuente</CardTitle>
+                        <CardTitle className="text-sm font-medium">Flujo de Caja</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-2">
                             <div className="flex justify-between">
-                                <span className="text-sm">Turnos/Reservas:</span>
-                                <span className="font-medium">
-                                    {formatCurrency(summary.bookingRevenue)}
+                                <span className="text-sm">Ingresos Turnos:</span>
+                                <span className="font-medium text-green-600">
+                                    +{formatCurrency(summary.bookingRevenue)}
                                 </span>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-sm">Ventas Kiosco:</span>
-                                <span className="font-medium">
-                                    {formatCurrency(summary.productRevenue)}
-                                </span>
-                            </div>
-                            <div className="flex justify-between pt-2 border-t">
-                                <span className="text-sm font-medium">Total:</span>
-                                <span className="font-bold">
-                                    {formatCurrency(summary.totalRevenue)}
-                                </span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-sm font-medium">Métodos de Pago</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-2">
-                            {Object.entries(byPaymentMethod).map(([method, amount]) => (
-                                <div key={method} className="flex justify-between">
-                                    <span className="text-sm capitalize">{method.toLowerCase()}:</span>
-                                    <span className="font-medium">
-                                        {formatCurrency(amount)}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-sm font-medium">Rentabilidad</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-2">
                             <div className="flex justify-between">
                                 <span className="text-sm">Ingresos Kiosco:</span>
-                                <span className="font-medium">
-                                    {formatCurrency(summary.productRevenue)}
+                                <span className="font-medium text-green-600">
+                                    +{formatCurrency(summary.productRevenue)}
                                 </span>
                             </div>
                             <div className="flex justify-between">
@@ -193,15 +168,60 @@ export function FinancialOverview({ dateRange }: { dateRange: DateRange }) {
                                     -{formatCurrency(summary.productCosts)}
                                 </span>
                             </div>
-                            <div className="flex justify-between pt-2 border-t">
-                                <span className="text-sm font-medium">Margen Kiosco:</span>
-                                <span className={`font-bold ${(summary.productRevenue - summary.productCosts) >= 0
-                                        ? 'text-green-600'
-                                        : 'text-red-600'
-                                    }`}>
-                                    {formatCurrency(summary.productRevenue - summary.productCosts)}
+                            <div className="flex justify-between">
+                                <span className="text-sm">Gastos Operativos:</span>
+                                <span className="font-medium text-red-600">
+                                    -{formatCurrency(summary.totalExpenses)}
                                 </span>
                             </div>
+                            <div className="flex justify-between pt-2 border-t">
+                                <span className="text-sm font-medium">Resultado Neto:</span>
+                                <span className={`font-bold ${summary.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {formatCurrency(summary.netProfit)}
+                                </span>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-sm font-medium">Gastos por Categoría</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-2">
+                            {Object.entries(expensesByCategory).length > 0 ? (
+                                Object.entries(expensesByCategory)
+                                    .sort(([, a], [, b]) => b - a)
+                                    .map(([category, amount]) => (
+                                        <div key={category} className="flex justify-between">
+                                            <span className="text-sm capitalize">{CATEGORY_LABELS[category] || category}:</span>
+                                            <span className="font-medium">
+                                                {formatCurrency(amount)}
+                                            </span>
+                                        </div>
+                                    ))
+                            ) : (
+                                <p className="text-sm text-gray-500 text-center py-2">No hay gastos registrados</p>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-sm font-medium">Métodos de Pago (Ingresos)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-2">
+                            {Object.entries(byPaymentMethod).map(([method, amount]) => (
+                                <div key={method} className="flex justify-between">
+                                    <span className="text-sm capitalize">{method.toLowerCase().replace('_', ' ')}:</span>
+                                    <span className="font-medium">
+                                        {formatCurrency(amount)}
+                                    </span>
+                                </div>
+                            ))}
                         </div>
                     </CardContent>
                 </Card>
@@ -217,19 +237,26 @@ interface MetricCardProps {
     format: 'currency' | 'number'
     description: string
     trend?: number
+    inverseTrend?: boolean
 }
 
-function MetricCard({ title, value, format, description, trend }: MetricCardProps) {
+function MetricCard({ title, value, format, description, trend, inverseTrend }: MetricCardProps) {
     const formattedValue = format === 'currency' ? formatCurrency(value) : value.toLocaleString()
+
+    // Si inverseTrend es true, un trend positivo es malo (rojo) y negativo es bueno (verde)
+    const isPositiveTrendGood = !inverseTrend
+    const isTrendPositive = trend && trend >= 0
+    const trendColor = isTrendPositive
+        ? (isPositiveTrendGood ? 'text-green-600' : 'text-red-600')
+        : (isPositiveTrendGood ? 'text-red-600' : 'text-green-600')
 
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{title}</CardTitle>
-                {trend && (
-                    <span className={`text-xs ${trend >= 0 ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                        {trend >= 0 ? '+' : ''}{trend}%
+                {trend !== undefined && (
+                    <span className={`text-xs ${trendColor}`}>
+                        {trend > 0 ? '+' : ''}{trend}%
                     </span>
                 )}
             </CardHeader>
