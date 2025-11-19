@@ -18,7 +18,8 @@ import {
   User,
   ChartPie,
   Menu,
-  X
+  X,
+  Receipt
 } from 'lucide-react'
 
 const navigation = [
@@ -28,6 +29,7 @@ const navigation = [
   { name: 'Kiosco', href: '/dashboard/kiosk', icon: ShoppingCart },
   { name: 'Productos', href: '/dashboard/products', icon: Package },
   { name: 'Analíticas', href: '/dashboard/analytics', icon: ChartPie },
+  { name: 'Gastos', href: '/dashboard/expenses', icon: Receipt },
 ]
 
 interface MobileSidebarProps {
@@ -57,7 +59,7 @@ export default function MobileSidebar({ user }: MobileSidebarProps) {
 
       {/* Overlay */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={() => setIsOpen(false)}
         />

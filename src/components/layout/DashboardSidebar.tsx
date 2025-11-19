@@ -12,7 +12,8 @@ import {
   LogOut,
   User,
   ChartPie,
-  Settings
+  Settings,
+  Receipt
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -33,6 +34,7 @@ const allNavigation = [
   { name: 'Productos', href: '/dashboard/products', icon: Package, permission: 'manage_products' },
   { name: 'Analíticas', href: '/dashboard/analytics', icon: ChartPie, permission: 'view_analytics' },
   { name: 'Usuarios', href: '/dashboard/users', icon: User, permission: 'manage_users' },
+  { name: 'Gastos', href: '/dashboard/expenses', icon: Receipt, permission: 'manage_expenses' },
   /* { name: 'Configuración', href: '/dashboard/settings', icon: Settings, permission: 'manage_settings' }, */
 ]
 
@@ -42,7 +44,7 @@ export default function DashboardSidebar({ user }: DashboardSidebarProps) {
   const { hasPermission } = usePermissions()
 
   // Filtrar navegación según permisos
-  const navigation = allNavigation.filter(item => 
+  const navigation = allNavigation.filter(item =>
     hasPermission(item.permission as any)
   )
 

@@ -3,15 +3,16 @@
 
 import { useUserRole, UserRole } from './useUserRole'
 
-export type Permission = 
+export type Permission =
   | 'view_dashboard'
   | 'manage_bookings'
-  | 'manage_clients' 
+  | 'manage_clients'
   | 'manage_products'
   | 'manage_sales'
   | 'manage_users'
   | 'view_analytics'
   | 'manage_settings'
+  | 'manage_expenses'
 
 const rolePermissions: Record<UserRole, Permission[]> = {
   admin: [
@@ -22,45 +23,43 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     'manage_sales',
     'manage_users',
     'view_analytics',
-    'manage_settings'
+    'manage_settings',
+    'manage_expenses'
+  ],
+  partner: [
+    'view_dashboard',
   ],
   employee: [
     'view_dashboard',
     'manage_bookings',
     'manage_clients',
     'manage_products',
-    'manage_sales'
-  ],
-  partner: [
-    'view_dashboard',
-    'view_analytics'
+    'manage_sales',
+    'manage_expenses'
   ]
 }
 
 export function usePermissions() {
   const { data: user, isLoading } = useUserRole()
 
-  const hasPermission = (permission: Permission): boolean => {
-    if (!user || !user.is_active) return false
-    // Type assertion - asumimos que user.role es válido
-    const userRole = user.role as UserRole
-    return rolePermissions[userRole]?.includes(permission) || false
+  const hasPermission = (permission: Permission) => {
+    if (!user || !user.role) return false
+    return rolePermissions[user.role as UserRole]?.includes(permission) ?? false
   }
 
-  const canAccessModule = (module: string): boolean => {
-    const modulePermissions: Record<string, Permission> = {
-      dashboard: 'view_dashboard',
-      bookings: 'manage_bookings',
-      clients: 'manage_clients',
-      products: 'manage_products',
-      kiosk: 'manage_sales',
-      analytics: 'view_analytics',
-      users: 'manage_users',
-      settings: 'manage_settings'
+  const canAccessModule = (moduleName: string) => {
+    switch (moduleName) {
+      case 'users': return hasPermission('manage_users')
+      case 'expenses': return hasPermission('manage_expenses')
+      case 'products': return hasPermission('manage_products')
+      case 'sales': return hasPermission('manage_sales')
+      case 'bookings': return hasPermission('manage_bookings')
+      case 'analytics': return hasPermission('view_analytics')
+      case 'settings': return hasPermission('manage_settings')
+      case 'clients': return hasPermission('manage_clients')
+      case 'kiosk': return hasPermission('manage_sales')
+      default: return true
     }
-
-    const requiredPermission = modulePermissions[module]
-    return requiredPermission ? hasPermission(requiredPermission) : false
   }
 
   return {
