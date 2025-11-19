@@ -1,9 +1,9 @@
-// src/components/kiosk/KioskPOS.tsx (versión mejorada)
+// src/components/kiosk/KioskPOS.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, Minus, Trash2, ShoppingCart, Loader2, Zap, X } from 'lucide-react'
+import { ShoppingCart, Loader2, Search, Filter, X, Trash2, Plus, Minus, Zap } from 'lucide-react'
 import { useProducts } from '@/hooks/useProducts'
 import { useBookings } from '@/hooks/useBookings'
 import type { Booking } from '@/lib/api/bookings'
@@ -13,6 +13,15 @@ import { PaymentMethod } from '@/lib/api/sales'
 import { Badge } from '@/components/ui/badge'
 import { Product } from '@/lib/api/products'
 import { toast } from 'sonner'
+import { Input } from '@/components/ui/input'
+import { ProductGrid } from './ProductGrid'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 type CartItem = {
   productId: string
@@ -23,15 +32,41 @@ type CartItem = {
   isComposite?: boolean
 }
 
+type FilterType = 'ALL' | 'HIGH_ROTATION' | 'COMPOSITE'
+
 export default function KioskPOS() {
   const [cart, setCart] = useState<CartItem[]>([])
-  const [selectedBooking, setSelectedBooking] = useState<string>('')
+  const [selectedBooking, setSelectedBooking] = useState<string>('no_booking')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('EFECTIVO')
   const [showCart, setShowCart] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeFilter, setActiveFilter] = useState<FilterType>('ALL')
 
   const { data: products, isLoading: productsLoading, error: productsError } = useProducts()
   const { data: bookings, isLoading: bookingsLoading } = useBookings(new Date().toISOString().split('T')[0])
   const createSaleMutation = useCreateSale()
+
+  // Filter products
+  const filteredProducts = useMemo(() => {
+    if (!products) return []
+
+    return products.filter(product => {
+      if (!product.is_active) return false
+
+      // Search filter
+      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase())
+
+      // Category filter
+      let matchesFilter = true
+      if (activeFilter === 'HIGH_ROTATION') {
+        matchesFilter = product.rotation_rate === 'high'
+      } else if (activeFilter === 'COMPOSITE') {
+        matchesFilter = product.is_composite
+      }
+
+      return matchesSearch && matchesFilter
+    })
+  }, [products, searchQuery, activeFilter])
 
   const addToCart = (product: Product) => {
     if (product.track_stock && product.stock !== null && product.stock <= 0) {
@@ -64,10 +99,10 @@ export default function KioskPOS() {
         isComposite: product.is_composite
       }]
 
-      // Toast de confirmación rápida
       toast.success(`${product.name} agregado`, {
         description: `Carrito: ${newCart.reduce((sum, item) => sum + item.quantity, 0)} productos`,
-        duration: 2000,
+        duration: 1000,
+        position: 'bottom-center'
       })
 
       return newCart
@@ -101,8 +136,9 @@ export default function KioskPOS() {
       const newCart = currentCart.filter(item => item.productId !== productId)
 
       if (removedItem) {
-        toast.info(`🗑️ ${removedItem.name} eliminado`, {
-          duration: 2000,
+        toast.info(`${removedItem.name} eliminado`, {
+          duration: 1000,
+          position: 'bottom-center'
         })
       }
 
@@ -112,7 +148,7 @@ export default function KioskPOS() {
 
   const clearCart = () => {
     if (cart.length > 0) {
-      toast.info('Carrito vaciado')
+      toast.info('Carrito vaciado', { position: 'bottom-center' })
     }
     setCart([])
   }
@@ -138,14 +174,14 @@ export default function KioskPOS() {
           quantity: item.quantity,
           unit_price: item.price
         })),
-        bookingId: selectedBooking || undefined
+        bookingId: selectedBooking === 'no_booking' ? undefined : selectedBooking
       }
 
       await createSaleMutation.mutateAsync(saleData)
 
       toast.success('Venta procesada exitosamente')
       setCart([])
-      setSelectedBooking('')
+      setSelectedBooking('no_booking')
       setPaymentMethod('EFECTIVO')
       setShowCart(false)
     } catch (error: any) {
@@ -160,381 +196,261 @@ export default function KioskPOS() {
     }).format(price)
   }
 
-  const getProductStockStatus = (product: Product) => {
-    if (!product.is_active) return 'INACTIVE'
-    if (product.track_stock && product.stock === 0) return 'OUT_OF_STOCK'
-    if (product.track_stock && product.stock && product.stock < 5) return 'LOW_STOCK'
-    return 'AVAILABLE'
-  }
-
-  const getProductBadgeVariant = (product: Product) => {
-    const status = getProductStockStatus(product)
-    if (status === 'OUT_OF_STOCK') return 'destructive'
-    if (status === 'LOW_STOCK') return 'default'
-    if (product.is_composite) return 'secondary'
-    return 'secondary'
-  }
-
-  const getProductBadgeText = (product: Product) => {
-    if (product.is_composite) return 'COMPUESTO'
-    if (!product.track_stock) return 'SIN CONTROL'
-    if (product.stock === null) return 'STOCK ∞'
-    return `STOCK ${product.stock}`
-  }
-
   // Mini-carrito flotante para móvil
   const MobileCartFloater = () => {
     if (cart.length === 0 || showCart) return null
 
     return (
       <div className="lg:hidden fixed bottom-4 left-4 right-4 z-40 animate-in slide-in-from-bottom duration-300">
-        <div className="bg-white border border-gray-200 rounded-lg shadow-xl p-3">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center space-x-2">
-              <ShoppingCart className="h-5 w-5 text-blue-600" />
-              <span className="font-semibold text-sm">Carrito</span>
-              <Badge variant="secondary" className="text-xs">
-                {totalItems} items
-              </Badge>
+        <div className="bg-white border border-gray-200 rounded-lg shadow-xl p-3 flex items-center justify-between" onClick={() => setShowCart(true)}>
+          <div className="flex items-center space-x-3">
+            <div className="bg-blue-600 text-white p-2 rounded-full">
+              <ShoppingCart className="h-5 w-5" />
             </div>
-            <div className="text-lg font-bold text-green-600">
-              {formatPrice(totalAmount)}
+            <div>
+              <p className="font-bold text-gray-900">{totalItems} items</p>
+              <p className="text-sm text-gray-500">{formatPrice(totalAmount)}</p>
             </div>
           </div>
-
-          <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearCart}
-              className="flex-1 text-xs"
-            >
-              <Trash2 className="h-3 w-3 mr-1" />
-              Vaciar
-            </Button>
-            <Button
-              onClick={() => setShowCart(true)}
-              size="sm"
-              className="flex-1 text-xs"
-            >
-              <ShoppingCart className="h-3 w-3 mr-1" />
-              Ver Carrito
-            </Button>
-          </div>
+          <Button size="sm" variant="ghost">Ver Carrito</Button>
         </div>
-      </div>
-    )
-  }
-
-  if (productsLoading) {
-    return (
-      <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4 sm:gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-xl sm:text-2xl">Productos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                <div
-                  key={i}
-                  className="h-20 sm:h-24 bg-gray-200 rounded-lg animate-pulse"
-                ></div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-        
       </div>
     )
   }
 
   if (productsError) {
     return (
-      <Card>
+      <Card className="border-red-200 bg-red-50">
         <CardContent className="pt-6">
-          <div className="text-center text-red-600 text-sm sm:text-base">
-            Error cargando productos: {productsError.message}
+          <div className="text-center text-red-600">
+            <p className="font-semibold">Error al cargar productos</p>
+            <p className="text-sm">{productsError.message}</p>
           </div>
         </CardContent>
       </Card>
     )
   }
 
-  const activeProducts = products?.filter(product => product.is_active) || []
-
   return (
-    <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4 sm:gap-6">
-      {/* Mini-carrito flotante para móvil */}
+    <div className="h-[calc(100vh-6rem)] flex flex-col lg:flex-row gap-4">
       <MobileCartFloater />
 
-      {/* Productos - Siempre visible */}
-      <Card className="lg:col-span-2">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <span className="text-xl sm:text-2xl">Productos Disponibles</span>
-            {/* Botón para abrir carrito en desktop */}
-            {cart.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={() => setShowCart(true)}
-                className="hidden lg:flex"
-              >
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                Ver Carrito ({totalItems})
-                <Badge variant="secondary" className="ml-2">
-                  {formatPrice(totalAmount)}
-                </Badge>
-              </Button>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
-            {activeProducts.map((product) => {
-              const stockStatus = getProductStockStatus(product)
-              const isOutOfStock = stockStatus === 'OUT_OF_STOCK'
-              const isLowStock = stockStatus === 'LOW_STOCK'
-              const isComposite = product.is_composite
-
-              return (
-                <Button
-                  key={product.id}
-                  variant={isOutOfStock ? "ghost" : "outline"}
-                  disabled={isOutOfStock}
-                  className={`h-auto p-2 sm:p-3 flex flex-col items-center justify-center space-y-1 sm:space-y-2 relative ${isComposite ? 'border-blue-300 bg-blue-50' : ''
-                    } ${isOutOfStock ? 'opacity-50' : ''}`}
-                  onClick={() => addToCart(product)}
-                >
-                  {isOutOfStock && (
-                    <div className="absolute inset-0 bg-gray-100 bg-opacity-90 flex items-center justify-center rounded-md">
-                      <span className="text-xs font-medium text-gray-500">SIN STOCK</span>
-                    </div>
-                  )}
-
-                  {isComposite && (
-                    <Zap className="h-3 w-3 text-blue-500 absolute top-1 right-1" />
-                  )}
-
-                  <div className="text-sm sm:text-lg font-semibold">
-                    {formatPrice(product.price)}
-                  </div>
-                  <div className="text-xs sm:text-sm text-center leading-tight line-clamp-2">
-                    {product.name}
-                  </div>
-                  <Badge
-                    variant={getProductBadgeVariant(product)}
-                    className="text-xs"
-                  >
-                    {getProductBadgeText(product)}
-                  </Badge>
-                </Button>
-              )
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Carrito - Drawer en móvil, sidebar en desktop */}
-      {showCart && (
-        <>
-          {/* Overlay para móvil */}
-          <div
-            className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
-            onClick={() => setShowCart(false)}
-          />
-
-          {/* Carrito */}
-          <Card className={`
-            fixed lg:static right-0 top-0 bottom-0 z-50 
-            w-full max-w-md lg:max-w-none lg:w-auto
-            transform transition-transform duration-300
-            ${showCart ? 'translate-x-0' : 'translate-x-full'}
-          `}>
-            <CardHeader className="pb-3 flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center text-xl sm:text-2xl">
-                <ShoppingCart className="h-5 w-5 mr-2" />
-                Carrito de Venta
-                {cart.length > 0 && (
-                  <Badge variant="secondary" className="ml-2">
-                    {totalItems} items
-                  </Badge>
-                )}
-              </CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowCart(false)}
-                className="lg:hidden"
+      {/* Main Content - Products */}
+      <div className="flex-1 flex flex-col min-h-0 space-y-4">
+        {/* Search and Filters Bar */}
+        <div className="bg-white p-4 rounded-lg border shadow-sm space-y-4 sm:space-y-0 sm:flex sm:items-center sm:justify-between gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Buscar productos..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
                 <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 no-scrollbar">
+            <Button
+              variant={activeFilter === 'ALL' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveFilter('ALL')}
+              className="whitespace-nowrap"
+            >
+              Todos
+            </Button>
+            <Button
+              variant={activeFilter === 'HIGH_ROTATION' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveFilter('HIGH_ROTATION')}
+              className="whitespace-nowrap"
+            >
+              <Zap className="h-3 w-3 mr-1" />
+              Alta Rotación
+            </Button>
+            <Button
+              variant={activeFilter === 'COMPOSITE' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveFilter('COMPOSITE')}
+              className="whitespace-nowrap"
+            >
+              Combos/Compuestos
+            </Button>
+          </div>
+        </div>
+
+        {/* Products Grid Area */}
+        <div className="flex-1 overflow-y-auto min-h-0 rounded-lg border bg-white shadow-sm p-4">
+          {productsLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
+              {[...Array(10)].map((_, i) => (
+                <div key={i} className="h-32 bg-gray-100 rounded-lg animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <ProductGrid
+              products={filteredProducts}
+              onAddToCart={addToCart}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Cart Sidebar - Desktop */}
+      <div className={`
+        fixed inset-0 z-50 lg:static lg:z-0 
+        ${showCart ? 'flex' : 'hidden lg:flex'}
+        lg:w-96 flex-col
+      `}>
+        {/* Mobile Overlay */}
+        <div
+          className="absolute inset-0 bg-black/50 lg:hidden backdrop-blur-sm"
+          onClick={() => setShowCart(false)}
+        />
+
+        {/* Cart Content */}
+        <Card className="relative w-full max-w-md ml-auto lg:max-w-none h-full flex flex-col shadow-xl lg:shadow-sm border-l-0 lg:border-l">
+          <CardHeader className="border-b px-4 py-3 flex flex-row items-center justify-between bg-gray-50/50">
+            <CardTitle className="flex items-center text-lg">
+              <ShoppingCart className="h-5 w-5 mr-2 text-blue-600" />
+              Carrito Actual
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="font-mono">
+                {totalItems}
+              </Badge>
+              <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setShowCart(false)}>
+                <X className="h-5 w-5" />
               </Button>
-            </CardHeader>
+            </div>
+          </CardHeader>
 
-            <CardContent className="h-[calc(100vh-120px)] lg:h-auto overflow-y-auto">
-              {/* Selector de turno y método de pago */}
-              <div className="space-y-3 mb-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Asociar a turno (opcional)</label>
-                  <select
-                    value={selectedBooking}
-                    onChange={(e) => setSelectedBooking(e.target.value)}
-                    className="w-full p-2 border rounded-md text-sm"
-                    disabled={bookingsLoading}
-                  >
-                    <option value="">Seleccionar turno...</option>
-                    {bookings?.map((booking: Booking) => (
-                      <option key={booking.id} value={booking.id}>
-                        {booking.courts?.name} - {new Date(booking.start_time).toLocaleTimeString('es-ES', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })} ({booking.clients?.name || 'Cliente ocasional'})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Método de pago</label>
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                    className="w-full p-2 border rounded-md text-sm"
-                  >
-                    <option value="EFECTIVO">Efectivo</option>
-                    <option value="TARJETA">Tarjeta</option>
-                    <option value="TRANSFERENCIA">Transferencia</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Items del carrito */}
-              <div className="space-y-2">
-                {cart.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <ShoppingCart className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-                    <p className="text-sm sm:text-base">El carrito está vacío</p>
-                    <Button
-                      variant="outline"
-                      className="mt-2"
-                      onClick={() => setShowCart(false)}
-                    >
-                      Agregar productos
-                    </Button>
+          <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Cart Items */}
+            <div className="space-y-3">
+              {cart.length === 0 ? (
+                <div className="text-center py-12 text-gray-400 flex flex-col items-center">
+                  <div className="bg-gray-100 p-4 rounded-full mb-3">
+                    <ShoppingCart className="h-8 w-8" />
                   </div>
-                ) : (
-                  <>
-                    {cart.map((item) => (
-                      <div
-                        key={item.productId}
-                        className={`flex items-center justify-between p-3 border rounded-lg bg-white ${item.isComposite ? 'border-blue-200 bg-blue-50' : ''
-                          }`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-1">
-                            <div className="font-medium text-sm truncate">{item.name}</div>
-                            {item.isComposite && (
-                              <Zap className="h-3 w-3 text-blue-500 flex-shrink-0" />
-                            )}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {formatPrice(item.price)} c/u
-                          </div>
-                          <div className="text-xs font-semibold">
-                            Total: {formatPrice(item.price * item.quantity)}
-                          </div>
-                        </div>
+                  <p>Tu carrito está vacío</p>
+                  <p className="text-sm">Agrega productos para comenzar</p>
+                </div>
+              ) : (
+                cart.map((item) => (
+                  <div
+                    key={item.productId}
+                    className="flex flex-col gap-2 p-3 rounded-lg border bg-white shadow-sm hover:border-blue-200 transition-colors"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="font-medium text-sm line-clamp-2">{item.name}</div>
+                      <div className="font-bold text-sm whitespace-nowrap">{formatPrice(item.price * item.quantity)}</div>
+                    </div>
 
-                        <div className="flex items-center space-x-2 flex-shrink-0">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
+                    <div className="flex items-center justify-between text-sm text-gray-500">
+                      <span>{formatPrice(item.price)} c/u</span>
 
-                          <span className="text-sm font-medium w-8 text-center">
-                            {item.quantity}
-                          </span>
-
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => removeFromCart(item.productId)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
+                      <div className="flex items-center gap-1 bg-gray-100 rounded-md p-0.5">
+                        <button
+                          onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                          className="p-1 hover:bg-white rounded-sm transition-colors"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
+                        <span className="w-6 text-center font-medium text-gray-900">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                          className="p-1 hover:bg-white rounded-sm transition-colors"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
                       </div>
-                    ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
 
-                    {/* Botón vaciar carrito */}
-                    <Button
-                      variant="outline"
-                      onClick={clearCart}
-                      className="w-full mt-2"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Vaciar Carrito
-                    </Button>
-                  </>
-                )}
+          {/* Cart Footer */}
+          <div className="border-t p-4 bg-gray-50/50 space-y-4">
+            {/* Checkout Options */}
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-500 uppercase">Turno (Opcional)</label>
+                <Select value={selectedBooking} onValueChange={setSelectedBooking} disabled={bookingsLoading}>
+                  <SelectTrigger className="h-9 text-sm bg-white">
+                    <SelectValue placeholder="Seleccionar turno..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="no_booking">Sin turno asociado</SelectItem>
+                    {bookings?.map((booking: Booking) => (
+                      <SelectItem key={booking.id} value={booking.id}>
+                        {booking.courts?.name} - {new Date(booking.start_time).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Total y botón de checkout */}
-              {cart.length > 0 && (
-                <div className="mt-6 space-y-3 border-t pt-4">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-base">Total:</span>
-                    <span className="text-xl font-bold text-green-600">
-                      {formatPrice(totalAmount)}
-                    </span>
-                  </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-500 uppercase">Método de Pago</label>
+                <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
+                  <SelectTrigger className="h-9 text-sm bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="EFECTIVO">Efectivo</SelectItem>
+                    <SelectItem value="TARJETA">Tarjeta</SelectItem>
+                    <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-                  <div className="text-xs text-gray-500">
-                    {cart.some(item => item.isComposite) && (
-                      <p className="text-blue-600">
-                        ⓘ Los productos compuestos incluyen sus componentes
-                      </p>
-                    )}
-                  </div>
+            <div className="space-y-3 pt-2">
+              <div className="flex justify-between items-end">
+                <span className="text-sm font-medium text-gray-500">Total a Pagar</span>
+                <span className="text-2xl font-bold text-gray-900">{formatPrice(totalAmount)}</span>
+              </div>
 
-                  <Button
-                    className="w-full"
-                    onClick={handleCheckout}
-                    disabled={createSaleMutation.isPending}
-                    size="lg"
-                  >
-                    {createSaleMutation.isPending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Procesando...
-                      </>
-                    ) : (
-                      <>
-                        <ShoppingCart className="h-4 w-4 mr-2" />
-                        Procesar Venta
-                      </>
-                    )}
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </>
-      )}
+              <div className="grid grid-cols-4 gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={clearCart}
+                  disabled={cart.length === 0}
+                  className="col-span-1 text-red-500 hover:text-red-600 hover:bg-red-50 border-red-100"
+                  title="Vaciar carrito"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+                <Button
+                  className="col-span-3 bg-green-600 hover:bg-green-700 text-white shadow-md shadow-green-200"
+                  onClick={handleCheckout}
+                  disabled={cart.length === 0 || createSaleMutation.isPending}
+                >
+                  {createSaleMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      Procesar Venta
+                      <ShoppingCart className="h-4 w-4 ml-2" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
     </div>
   )
 }
