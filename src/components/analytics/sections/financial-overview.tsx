@@ -13,6 +13,7 @@ interface FinancialData {
         bookingRevenue: number
         productRevenue: number
         productCosts: number
+        internalConsumptionCosts: number
         totalExpenses: number
         netProfit: number
         totalBookings: number
@@ -163,11 +164,19 @@ export function FinancialOverview({ dateRange }: { dateRange: DateRange }) {
                                 </span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-sm">Costos Kiosco:</span>
+                                <span className="text-sm">Costos Ventas:</span>
                                 <span className="font-medium text-red-600">
-                                    -{formatCurrency(summary.productCosts)}
+                                    -{formatCurrency(summary.productCosts - (summary.internalConsumptionCosts || 0))}
                                 </span>
                             </div>
+                            {summary.internalConsumptionCosts > 0 && (
+                                <div className="flex justify-between">
+                                    <span className="text-sm">Costo Consumo Interno:</span>
+                                    <span className="font-medium text-orange-600">
+                                        -{formatCurrency(summary.internalConsumptionCosts)}
+                                    </span>
+                                </div>
+                            )}
                             <div className="flex justify-between">
                                 <span className="text-sm">Gastos Operativos:</span>
                                 <span className="font-medium text-red-600">

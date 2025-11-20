@@ -24,7 +24,7 @@ export interface SaleItem {
   }
 }
 
-export type PaymentMethod = 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA'
+export type PaymentMethod = 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'CONSUMO_INTERNO'
 
 export interface SaleData {
   sale: {
@@ -42,7 +42,7 @@ export interface SaleData {
 
 export async function getSales(date?: string): Promise<Sale[]> {
   const url = date ? `/api/sales?date=${date}` : '/api/sales'
-  
+
   const response = await fetch(url)
 
   if (!response.ok) {

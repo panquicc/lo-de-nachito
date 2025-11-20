@@ -114,7 +114,7 @@ function calculateFinancialMetrics(bookings: any[], sales: any[], expenses: any[
   const totalRevenue = bookingRevenue + productRevenue
 
   // Métricas por día para el gráfico
-  const dailyBreakdown = calculateDailyBreakdown(bookings, sales, expenses, productCosts)
+  const dailyBreakdown = calculateDailyBreakdown(bookings, sales, expenses)
 
   return {
     summary: {
@@ -124,6 +124,7 @@ function calculateFinancialMetrics(bookings: any[], sales: any[], expenses: any[
       productCosts,
       totalExpenses,
       netProfit: totalRevenue - productCosts - totalExpenses,
+      internalConsumptionCosts: calculateInternalConsumptionCosts(sales),
       totalBookings: bookings.length,
       totalSales: sales.length,
       totalExpensesCount: expenses.length
@@ -146,7 +147,19 @@ function calculateFinancialMetrics(bookings: any[], sales: any[], expenses: any[
   }
 }
 
-function calculateDailyBreakdown(bookings: any[], sales: any[], expenses: any[], totalCosts: number) {
+function calculateInternalConsumptionCosts(sales: any[]) {
+  return sales
+    .filter(sale => sale.payment_method === 'CONSUMO_INTERNO')
+    .reduce((sum, sale) => {
+      const saleCost = sale.sale_items?.reduce((itemSum: number, item: any) => {
+        const costPrice = item.products?.cost_price || 0
+        return itemSum + (costPrice * item.quantity)
+      }, 0) || 0
+      return sum + saleCost
+    }, 0)
+}
+
+function calculateDailyBreakdown(bookings: any[], sales: any[], expenses: any[]) {
   const dailyMap = new Map()
 
   // Procesar bookings por día
@@ -158,20 +171,20 @@ function calculateDailyBreakdown(bookings: any[], sales: any[], expenses: any[],
     dailyMap.set(date, existing)
   })
 
-  // Procesar ventas por día y distribuir costos proporcionalmente
-  const totalProductRevenue = sales.reduce((sum, sale) => sum + sale.total_amount, 0)
-
+  // Procesar ventas por día
   sales.forEach(sale => {
     const date = new Date(sale.created_at).toISOString().split('T')[0]
     const existing = dailyMap.get(date) || { date, revenue: 0, bookings: 0, salesCount: 0, costs: 0, expenses: 0 }
     existing.revenue += sale.total_amount
     existing.salesCount += 1
 
-    // Distribuir costos proporcionalmente al revenue de cada día
-    if (totalProductRevenue > 0) {
-      const revenueShare = sale.total_amount / totalProductRevenue
-      existing.costs += totalCosts * revenueShare
-    }
+    // Calcular costo real de esta venta
+    const saleCost = sale.sale_items?.reduce((itemSum: number, item: any) => {
+      const costPrice = item.products?.cost_price || 0
+      return itemSum + (costPrice * item.quantity)
+    }, 0) || 0
+
+    existing.costs += saleCost
 
     dailyMap.set(date, existing)
   })

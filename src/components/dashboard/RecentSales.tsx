@@ -9,13 +9,15 @@ import { Loader2, Receipt } from 'lucide-react'
 const paymentMethodColors = {
   EFECTIVO: 'bg-green-100 text-green-800 border-green-200',
   TARJETA: 'bg-blue-100 text-blue-800 border-blue-200',
-  TRANSFERENCIA: 'bg-purple-100 text-purple-800 border-purple-200'
+  TRANSFERENCIA: 'bg-purple-100 text-purple-800 border-purple-200',
+  CONSUMO_INTERNO: 'bg-orange-100 text-orange-800 border-orange-200'
 }
 
 const paymentMethodLabels = {
   EFECTIVO: 'Efectivo',
   TARJETA: 'Tarjeta',
-  TRANSFERENCIA: 'Transferencia'
+  TRANSFERENCIA: 'Transferencia',
+  CONSUMO_INTERNO: 'Consumo Interno'
 }
 
 export default function RecentSales() {
@@ -64,7 +66,7 @@ export default function RecentSales() {
     )
   }
 
-  const recentSales = sales?.slice(0, 10) || [] // Mostrar hasta 10 ventas
+  const recentSales = sales?.slice(0, 100) || [] // Mostrar hasta 10 ventas
   const totalToday = sales?.reduce((total, sale) => total + sale.total_amount, 0) || 0
 
   const formatTime = (dateString: string) => {
@@ -86,6 +88,7 @@ export default function RecentSales() {
   }
 
   const getClientName = (sale: any) => {
+    if (sale.payment_method === 'CONSUMO_INTERNO') return 'Consumo Interno'
     return sale.clients?.name || 'Cliente ocasional'
   }
 
@@ -99,7 +102,7 @@ export default function RecentSales() {
           </Badge>
         </CardTitle>
       </CardHeader>
-      
+
       <CardContent className="flex-1 flex flex-col p-0">
         {recentSales.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-gray-500">
@@ -124,13 +127,19 @@ export default function RecentSales() {
                         {getItemsCount(sale)} producto{getItemsCount(sale) !== 1 ? 's' : ''} • {formatTime(sale.created_at)}
                       </div>
                     </div>
-                    
+
                     <div className="text-right flex-shrink-0 ml-2">
                       <div className="font-semibold text-sm whitespace-nowrap">
-                        {formatAmount(sale.total_amount)}
+                        {sale.payment_method === 'CONSUMO_INTERNO' ? (
+                          <span className="text-orange-600" title="Costo para la empresa">
+                            -{formatAmount(sale.sale_items?.reduce((acc: number, item: any) => acc + (item.quantity * (item.products?.cost_price || 0)), 0) || 0)}
+                          </span>
+                        ) : (
+                          formatAmount(sale.total_amount)
+                        )}
                       </div>
-                      <Badge 
-                        variant="secondary" 
+                      <Badge
+                        variant="secondary"
                         className={`text-xs whitespace-nowrap ${paymentMethodColors[sale.payment_method as keyof typeof paymentMethodColors]}`}
                       >
                         {paymentMethodLabels[sale.payment_method as keyof typeof paymentMethodLabels]}
@@ -140,7 +149,7 @@ export default function RecentSales() {
                 ))}
               </div>
             </div>
-            
+
             {/* Total del día - Siempre visible */}
             <div className="flex-shrink-0 border-t p-4 bg-gray-50/50">
               <div className="flex justify-between items-center text-sm">

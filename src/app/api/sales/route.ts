@@ -6,9 +6,9 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const date = searchParams.get('date')
-    
+
     const supabase = await createClient()
-    
+
     let query = supabase
       .from('sales')
       .select(`
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
         sale_items (
           quantity,
           unit_price,
-          products (name)
+          products (name, cost_price)
         )
       `)
       .order('created_at', { ascending: false })
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       const startOfDay = new Date(date)
       const endOfDay = new Date(date)
       endOfDay.setDate(endOfDay.getDate() + 1)
-      
+
       query = query
         .gte('created_at', startOfDay.toISOString())
         .lt('created_at', endOfDay.toISOString())
@@ -138,17 +138,17 @@ async function validateStock(supabase: any, items: any[]) {
       .single()
 
     if (!product) {
-      return { 
-        isValid: false, 
-        error: `Producto no encontrado: ${item.product_id}` 
+      return {
+        isValid: false,
+        error: `Producto no encontrado: ${item.product_id}`
       }
     }
 
     // Validar stock de producto normal
     if (product.track_stock && product.stock !== null && product.stock < item.quantity) {
-      return { 
-        isValid: false, 
-        error: `Stock insuficiente para ${product.name}. Disponible: ${product.stock}, Solicitado: ${item.quantity}` 
+      return {
+        isValid: false,
+        error: `Stock insuficiente para ${product.name}. Disponible: ${product.stock}, Solicitado: ${item.quantity}`
       }
     }
 

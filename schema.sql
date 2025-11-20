@@ -310,7 +310,7 @@ create index IF not exists idx_product_components_component on public.product_co
 CREATE TABLE IF NOT EXISTS sales (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   total_amount DECIMAL(10,2) NOT NULL CHECK (total_amount >= 0),
-  payment_method VARCHAR(20) DEFAULT 'EFECTIVO' CHECK (payment_method IN ('EFECTIVO', 'TARJETA', 'TRANSFERENCIA')),
+  payment_method VARCHAR(20) DEFAULT 'EFECTIVO' CHECK (payment_method IN ('EFECTIVO', 'TARJETA', 'TRANSFERENCIA', 'CONSUMO_INTERNO')),
   client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

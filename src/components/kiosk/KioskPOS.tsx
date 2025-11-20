@@ -163,16 +163,18 @@ export default function KioskPOS() {
     }
 
     try {
+      const isInternalConsumption = paymentMethod === 'CONSUMO_INTERNO'
+
       const saleData = {
         sale: {
-          total_amount: totalAmount,
+          total_amount: isInternalConsumption ? 0 : totalAmount,
           payment_method: paymentMethod,
           client_id: undefined
         },
         items: cart.map(item => ({
           product_id: item.productId,
           quantity: item.quantity,
-          unit_price: item.price
+          unit_price: isInternalConsumption ? 0 : item.price
         })),
         bookingId: selectedBooking === 'no_booking' ? undefined : selectedBooking
       }
@@ -420,6 +422,7 @@ export default function KioskPOS() {
                     <SelectItem value="EFECTIVO">Efectivo</SelectItem>
                     <SelectItem value="TARJETA">Tarjeta</SelectItem>
                     <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
+                    <SelectItem value="CONSUMO_INTERNO">Consumo Interno (Dueños/Personal)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -428,7 +431,14 @@ export default function KioskPOS() {
             <div className="space-y-3 pt-2">
               <div className="flex justify-between items-end">
                 <span className="text-sm font-medium text-gray-500">Total a Pagar</span>
-                <span className="text-2xl font-bold text-gray-900">{formatPrice(totalAmount)}</span>
+                <div className="flex flex-col items-end">
+                  {paymentMethod === 'CONSUMO_INTERNO' && (
+                    <span className="text-xs text-gray-400 line-through">{formatPrice(totalAmount)}</span>
+                  )}
+                  <span className="text-2xl font-bold text-gray-900">
+                    {paymentMethod === 'CONSUMO_INTERNO' ? formatPrice(0) : formatPrice(totalAmount)}
+                  </span>
+                </div>
               </div>
 
               <div className="grid grid-cols-4 gap-2">
