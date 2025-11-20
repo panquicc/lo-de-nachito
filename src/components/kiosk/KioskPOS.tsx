@@ -196,6 +196,15 @@ export default function KioskPOS() {
     }).format(price)
   }
 
+  // Create a Map of product IDs to their quantities in the cart
+  const cartQuantities = useMemo(() => {
+    const quantities = new Map<string, number>()
+    cart.forEach(item => {
+      quantities.set(item.productId, item.quantity)
+    })
+    return quantities
+  }, [cart])
+
   // Mini-carrito flotante para móvil
   const MobileCartFloater = () => {
     if (cart.length === 0 || showCart) return null
@@ -298,6 +307,7 @@ export default function KioskPOS() {
             <ProductGrid
               products={filteredProducts}
               onAddToCart={addToCart}
+              cartQuantities={cartQuantities}
             />
           )}
         </div>

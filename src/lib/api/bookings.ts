@@ -37,17 +37,24 @@ export interface CreateBookingData {
   hour_price: number
   deposit_amount: number
   notes?: string
+  recurrence?: {
+    frequency: 'DAILY' | 'WEEKLY'
+    interval?: number
+    daysOfWeek?: number[]
+    endDate?: string
+    occurrences?: number
+  }
 }
 
 export async function getBookings(date?: string, courtId?: string): Promise<Booking[]> {
   const params = new URLSearchParams()
   if (date) params.append('date', date)
   if (courtId) params.append('courtId', courtId)
-  
+
   const url = `/api/bookings?${params.toString()}`
-  
+
   const response = await fetch(url)
-  
+
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error || 'Failed to fetch bookings')
@@ -58,7 +65,7 @@ export async function getBookings(date?: string, courtId?: string): Promise<Book
 
 export async function getBooking(id: string): Promise<Booking> {
   const response = await fetch(`/api/bookings/${id}`)
-  
+
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error || 'Failed to fetch booking')

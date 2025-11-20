@@ -37,7 +37,7 @@ export interface UpdateComponentData {
 
 export async function getProducts(): Promise<Product[]> {
   const response = await fetch('/api/products')
-  
+
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error || 'Fallo al obtener el producto')
@@ -96,7 +96,7 @@ export async function deleteProduct(id: string): Promise<{ success: boolean }> {
 // Agregar estas funciones al archivo existente
 export async function getProductComponents(productId: string): Promise<ProductComponent[]> {
   const response = await fetch(`/api/products/${productId}/components`)
-  
+
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error || 'Error al obtener componentes del producto')
@@ -106,7 +106,7 @@ export async function getProductComponents(productId: string): Promise<ProductCo
 }
 
 export async function addProductComponent(
-  productId: string, 
+  productId: string,
   componentData: AddComponentData
 ): Promise<ProductComponent> {
   const response = await fetch(`/api/products/${productId}/components`, {

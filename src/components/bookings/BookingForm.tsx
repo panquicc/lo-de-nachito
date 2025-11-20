@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 
 interface BookingFormProps {
@@ -71,6 +72,17 @@ export function BookingForm({ booking, onSubmit, onCancel, isLoading = false }: 
     mercado_pago_amount: booking?.mercado_pago_amount || 0,
     amount: booking?.amount || 0,
     notes: booking?.notes || ''
+  })
+
+  // Estado para recurrencia
+  const [isRecurring, setIsRecurring] = useState(false)
+  const [recurrenceData, setRecurrenceData] = useState({
+    frequency: 'WEEKLY' as 'DAILY' | 'WEEKLY',
+    interval: 1,
+    daysOfWeek: [] as number[],
+    endDate: '',
+    occurrences: 4,
+    endType: 'occurrences' as 'date' | 'occurrences'
   })
 
   // Verificar disponibilidad cuando cambien los horarios
@@ -232,7 +244,14 @@ export function BookingForm({ booking, onSubmit, onCancel, isLoading = false }: 
       mercado_pago_amount: formData.mercado_pago_amount,
       hour_price: formData.hour_price,
       deposit_amount: formData.deposit_amount,
-      notes: formData.notes
+      notes: formData.notes,
+      recurrence: isRecurring ? {
+        frequency: recurrenceData.frequency,
+        interval: recurrenceData.interval,
+        daysOfWeek: recurrenceData.frequency === 'WEEKLY' ? recurrenceData.daysOfWeek : undefined,
+        endDate: recurrenceData.endType === 'date' ? recurrenceData.endDate : undefined,
+        occurrences: recurrenceData.endType === 'occurrences' ? recurrenceData.occurrences : undefined
+      } : undefined
     }
 
     onSubmit(bookingData)
@@ -363,6 +382,79 @@ export function BookingForm({ booking, onSubmit, onCancel, isLoading = false }: 
           </div>
         </div>
       )}
+
+      {/* Recurrencia */}
+      <div className="space-y-4 border-t pt-4">
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="recurring"
+            checked={isRecurring}
+            onCheckedChange={setIsRecurring}
+          />
+          <Label htmlFor="recurring">Repetir turno</Label>
+        </div>
+
+        {isRecurring && (
+          <div className="pl-6 space-y-4 border-l-2 border-gray-100">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Frecuencia</Label>
+                <Select
+                  value={recurrenceData.frequency}
+                  onValueChange={(val: 'DAILY' | 'WEEKLY') => setRecurrenceData(prev => ({ ...prev, frequency: val }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="WEEKLY">Semanal</SelectItem>
+                    <SelectItem value="DAILY">Diaria</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Finalización</Label>
+                <Select
+                  value={recurrenceData.endType}
+                  onValueChange={(val: 'date' | 'occurrences') => setRecurrenceData(prev => ({ ...prev, endType: val }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="occurrences">Después de X veces</SelectItem>
+                    <SelectItem value="date">En una fecha específica</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {recurrenceData.endType === 'occurrences' ? (
+              <div className="space-y-2">
+                <Label>Cantidad de repeticiones</Label>
+                <Input
+                  type="number"
+                  min={2}
+                  max={50}
+                  value={recurrenceData.occurrences}
+                  onChange={(e) => setRecurrenceData(prev => ({ ...prev, occurrences: parseInt(e.target.value) || 1 }))}
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Fecha de fin</Label>
+                <Input
+                  type="date"
+                  value={recurrenceData.endDate}
+                  onChange={(e) => setRecurrenceData(prev => ({ ...prev, endDate: e.target.value }))}
+                  min={formData.start_date}
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Precios y Pagos */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

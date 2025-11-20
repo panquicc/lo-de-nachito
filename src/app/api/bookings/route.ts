@@ -85,6 +85,39 @@ async function checkBookingAvailability(
   return conflics && conflics.length > 0 ? conflics[0] : null
 }
 
+function generateRecurringDates(start: Date, end: Date, recurrence: any) {
+  const dates = []
+  const duration = end.getTime() - start.getTime()
+  let currentStart = new Date(start)
+  let count = 0
+
+  // Limite de seguridad
+  const MAX_OCCURRENCES = 50
+  const limit = recurrence.occurrences ? Math.min(recurrence.occurrences, MAX_OCCURRENCES) : MAX_OCCURRENCES
+  const endDateLimit = recurrence.endDate ? new Date(recurrence.endDate) : null
+
+  while (count < limit) {
+    // Verificar fecha limite
+    if (endDateLimit && currentStart > endDateLimit) break
+
+    dates.push({
+      start: new Date(currentStart),
+      end: new Date(currentStart.getTime() + duration)
+    })
+
+    // Avanzar fecha
+    if (recurrence.frequency === 'DAILY') {
+      currentStart.setDate(currentStart.getDate() + 1)
+    } else if (recurrence.frequency === 'WEEKLY') {
+      currentStart.setDate(currentStart.getDate() + 7)
+    }
+
+    count++
+  }
+
+  return dates
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
@@ -116,30 +149,6 @@ export async function POST(request: Request) {
       )
     }
 
-    // VERIFICAR DISPONIBILIDAD ANTES DE INSERTAR
-    const conflict = await checkBookingAvailability(
-      supabase,
-      bookingData.court_id,
-      bookingData.start_time,
-      bookingData.end_time
-    )
-
-    if (conflict) {
-      const conflictStart = ArgentinaDateUtils.formatDateTime(new Date(conflict.start_time))
-      const conflictEnd = ArgentinaDateUtils.formatDateTime(new Date(conflict.end_time))
-
-      return NextResponse.json(
-        {
-          error: 'La cancha no está disponible en el horario seleccionado',
-          conflict: {
-            existing_booking: conflict,
-            message: `Conflicto con reserva existente: ${conflictStart} - ${conflictEnd}`
-          }
-        },
-        { status: 409 } // 409 Conflict
-      )
-    }
-
     // Validar que los montos sean consistentes
     if (bookingData.payment_method === 'EFECTIVO' && bookingData.cash_amount !== bookingData.amount) {
       return NextResponse.json(
@@ -163,43 +172,101 @@ export async function POST(request: Request) {
       )
     }
 
-    // Transformar fechas a UTC antes de guardar
-    const transformedData = {
-      ...bookingData,
-      start_time: ArgentinaDateUtils.localToUTC(new Date(startTime)),
-      end_time: ArgentinaDateUtils.localToUTC(new Date(endTime)),
-      // Asegurar valores por defecto 
-      cash_amount: bookingData.cash_amount || 0,
-      mercado_pago_amount: bookingData.mercado_pago_amount || 0,
-      hour_price: bookingData.hour_price || 0,
-      deposit_amount: bookingData.deposit_amount || 0
+    // Generar lista de reservas (1 o muchas)
+    let bookingsToCreate = []
+
+    if (bookingData.recurrence) {
+      const dates = generateRecurringDates(startTime, endTime, bookingData.recurrence)
+      bookingsToCreate = dates.map(date => ({
+        ...bookingData,
+        start_time: date.start.toISOString(),
+        end_time: date.end.toISOString()
+      }))
+    } else {
+      bookingsToCreate = [{
+        ...bookingData,
+        start_time: startTime.toISOString(),
+        end_time: endTime.toISOString()
+      }]
     }
 
-    const { data: booking, error } = await supabase
-      .from('bookings')
-      .insert([{
-        ...transformedData,
-      }])
-      .select(`
-        *,
-        courts (name, type),
-        clients (name, phone)
-      `)
-      .single()
+    // Verificar disponibilidad para TODAS las reservas
+    for (const booking of bookingsToCreate) {
+      const conflict = await checkBookingAvailability(
+        supabase,
+        booking.court_id,
+        booking.start_time,
+        booking.end_time
+      )
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      if (conflict) {
+        const conflictStart = ArgentinaDateUtils.formatDateTime(new Date(conflict.start_time))
+        const conflictEnd = ArgentinaDateUtils.formatDateTime(new Date(conflict.end_time))
+        const bookingStart = ArgentinaDateUtils.formatDateTime(new Date(booking.start_time))
+
+        return NextResponse.json(
+          {
+            error: 'Conflicto de disponibilidad en serie recurrente',
+            conflict: {
+              existing_booking: conflict,
+              message: `Conflicto el ${bookingStart} con reserva existente: ${conflictStart} - ${conflictEnd}`
+            }
+          },
+          { status: 409 }
+        )
+      }
     }
 
-    const transformedBooking = booking ? {
-      ...booking,
-      start_time: ArgentinaDateUtils.UTCToLocal(booking.start_time),
-      end_time: ArgentinaDateUtils.UTCToLocal(booking.end_time),
-      created_at: ArgentinaDateUtils.UTCToLocal(booking.created_at)
+    // Insertar reservas
+    const createdBookings = []
+
+    for (const booking of bookingsToCreate) {
+      // Transformar fechas a UTC antes de guardar
+      const transformedData = {
+        ...booking,
+        start_time: ArgentinaDateUtils.localToUTC(new Date(booking.start_time)),
+        end_time: ArgentinaDateUtils.localToUTC(new Date(booking.end_time)),
+        // Asegurar valores por defecto 
+        cash_amount: booking.cash_amount || 0,
+        mercado_pago_amount: booking.mercado_pago_amount || 0,
+        hour_price: booking.hour_price || 0,
+        deposit_amount: booking.deposit_amount || 0
+      }
+
+      // Remove recurrence object before insert
+      delete transformedData.recurrence
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .insert([transformedData])
+        .select(`
+          *,
+          courts (name, type),
+          clients (name, phone)
+        `)
+        .single()
+
+      if (error) {
+        // Si falla una, podríamos querer hacer rollback, pero por ahora retornamos error
+        // Idealmente usaríamos una transacción RPC de Supabase
+        return NextResponse.json({ error: error.message }, { status: 400 })
+      }
+
+      createdBookings.push(data)
+    }
+
+    // Retornar la primera reserva creada o la lista
+    const firstBooking = createdBookings[0]
+    const transformedBooking = firstBooking ? {
+      ...firstBooking,
+      start_time: ArgentinaDateUtils.UTCToLocal(firstBooking.start_time),
+      end_time: ArgentinaDateUtils.UTCToLocal(firstBooking.end_time),
+      created_at: ArgentinaDateUtils.UTCToLocal(firstBooking.created_at)
     } : null
 
     return NextResponse.json(transformedBooking)
   } catch (error) {
+    console.error(error)
     return NextResponse.json({ error: 'Error creando reserva' }, { status: 500 })
   }
 }
