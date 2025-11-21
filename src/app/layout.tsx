@@ -18,8 +18,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es">
-      <body className={inter.className}>
+    <html suppressHydrationWarning>
+      <body className={inter.className} suppressHydrationWarning>
         <Providers>
           <div className="min-h-screen bg-gray-50">
             {children}
