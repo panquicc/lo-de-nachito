@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { syncPull, syncPush } from '@/lib/sync'
 import { toast } from 'sonner'
+import { usePathname } from 'next/navigation'
 
 interface OfflineContextType {
     isOnline: boolean
@@ -22,6 +23,8 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     const [isOnline, setIsOnline] = useState(true)
     const [isSyncing, setIsSyncing] = useState(false)
     const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null)
+
+    const pathname = usePathname()
 
     useEffect(() => {
         // Initial check
@@ -53,6 +56,9 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     }, [])
 
     const performSync = async () => {
+        // Skip sync on public pages like /disponibles
+        if (pathname?.startsWith('/disponibles')) return
+
         if (isSyncing) return
         setIsSyncing(true)
         try {
