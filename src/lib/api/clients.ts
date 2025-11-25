@@ -24,6 +24,12 @@ export async function getClients(search?: string): Promise<Client[]> {
   return clients
 }
 
+export async function fetchClientsFromApi(): Promise<Client[]> {
+  const response = await fetch('/api/clients')
+  if (!response.ok) throw new Error('Failed to fetch clients from API')
+  return response.json()
+}
+
 export async function getClient(id: string): Promise<Client> {
   const client = await db.clients.get(id)
   if (!client) throw new Error('Client not found')

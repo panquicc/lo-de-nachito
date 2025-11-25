@@ -19,6 +19,12 @@ export async function getExpenses(filters?: { startDate?: string; endDate?: stri
     return expenses
 }
 
+export async function fetchExpensesFromApi(): Promise<Expense[]> {
+    const response = await fetch('/api/expenses')
+    if (!response.ok) throw new Error('Failed to fetch expenses from API')
+    return response.json()
+}
+
 export async function createExpense(expenseData: CreateExpenseDTO): Promise<Expense> {
     const newExpense: Expense = {
         ...expenseData,

@@ -63,6 +63,15 @@ export async function getBookings(date?: string, courtId?: string): Promise<Book
   return bookings
 }
 
+export async function fetchBookingsFromApi(date?: string): Promise<Booking[]> {
+  const params = new URLSearchParams()
+  if (date) params.append('date', date) // Adjust param name if needed based on API
+
+  const response = await fetch(`/api/bookings?${params.toString()}`)
+  if (!response.ok) throw new Error('Failed to fetch bookings from API')
+  return response.json()
+}
+
 export async function getBooking(id: string): Promise<Booking> {
   const booking = await db.bookings.get(id)
   if (!booking) throw new Error('Booking not found')

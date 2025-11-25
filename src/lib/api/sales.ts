@@ -54,6 +54,15 @@ export async function getSales(date?: string): Promise<Sale[]> {
   return db.sales.toArray()
 }
 
+export async function fetchSalesFromApi(date?: string): Promise<Sale[]> {
+  const params = new URLSearchParams()
+  if (date) params.append('startDate', date)
+
+  const response = await fetch(`/api/sales?${params.toString()}`)
+  if (!response.ok) throw new Error('Failed to fetch sales from API')
+  return response.json()
+}
+
 export async function createSale(saleData: SaleData): Promise<{ success: boolean; sale: Sale }> {
   // Create a local representation of the sale
   const newSale: Sale = {

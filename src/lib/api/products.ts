@@ -36,6 +36,12 @@ export async function getProducts(): Promise<Product[]> {
   return db.products.toArray()
 }
 
+export async function fetchProductsFromApi(): Promise<Product[]> {
+  const response = await fetch('/api/products')
+  if (!response.ok) throw new Error('Failed to fetch products from API')
+  return response.json()
+}
+
 export async function createProduct(product: Omit<Product, 'id' | 'created_at'>): Promise<Product> {
   const newProduct: Product = {
     ...product,
