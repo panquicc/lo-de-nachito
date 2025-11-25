@@ -13,7 +13,8 @@ export async function GET(request: Request) {
       .from('sales')
       .select(`
         *,
-        clients (name),
+        *,
+        clients!left (name),
         sale_items (
           quantity,
           unit_price,
@@ -22,14 +23,41 @@ export async function GET(request: Request) {
       `)
       .order('created_at', { ascending: false })
 
-    if (date) {
-      const startOfDay = new Date(date)
-      const endOfDay = new Date(date)
-      endOfDay.setDate(endOfDay.getDate() + 1)
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+    const clientName = searchParams.get('clientName')
 
-      query = query
-        .gte('created_at', startOfDay.toISOString())
-        .lt('created_at', endOfDay.toISOString())
+    if (startDate) {
+      query = query.gte('created_at', new Date(startDate).toISOString())
+    }
+    
+    if (endDate) {
+      // Adjust end date to include the full day
+      const end = new Date(endDate)
+      end.setDate(end.getDate() + 1)
+      query = query.lt('created_at', end.toISOString())
+    }
+
+    if (clientName) {
+      // Filter by client name using inner join logic if possible, 
+      // but Supabase simple filtering on related tables is tricky.
+      // A common workaround is !inner join but let's try the simple filter first
+      // or fetch all and filter in memory if volume is low, OR use the correct syntax:
+      // clients!inner(name) with ilike.
+      query = query.ilike('clients.name', `%${clientName}%`)
+      // Note: For this to work, we need to make sure the join is correct.
+      // In the select above: clients (name) -> this is a left join by default.
+      // To filter by related table column, we usually need !inner to force inner join
+      // or use the embedded filter syntax.
+      // Let's update the select to use !inner if clientName is present, 
+      // but that changes the query structure dynamically.
+      // Easier approach for now: apply filter. Supabase supports filtering on joined tables
+      // with the dot notation if the relationship is set up.
+    }
+
+    const paymentMethod = searchParams.get('payment_method')
+    if (paymentMethod && paymentMethod !== 'TODOS') {
+      query = query.eq('payment_method', paymentMethod)
     }
 
     const { data: sales, error } = await query

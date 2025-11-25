@@ -19,7 +19,8 @@ import {
   ChartPie,
   Menu,
   X,
-  Receipt
+  Receipt,
+  TicketCheck
 } from 'lucide-react'
 
 const navigation = [
@@ -30,6 +31,7 @@ const navigation = [
   { name: 'Productos', href: '/dashboard/products', icon: Package },
   { name: 'Analíticas', href: '/dashboard/analytics', icon: ChartPie },
   { name: 'Gastos', href: '/dashboard/expenses', icon: Receipt },
+  { name: 'Ventas', href: '/dashboard/sales', icon: TicketCheck },
 ]
 
 interface MobileSidebarProps {

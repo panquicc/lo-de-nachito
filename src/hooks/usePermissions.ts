@@ -13,6 +13,7 @@ export type Permission =
   | 'view_analytics'
   | 'manage_settings'
   | 'manage_expenses'
+  | 'manage_sales'
 
 const rolePermissions: Record<UserRole, Permission[]> = {
   admin: [
@@ -24,11 +25,13 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     'manage_users',
     'view_analytics',
     'manage_settings',
-    'manage_expenses'
+    'manage_expenses',
+    'manage_sales'
   ],
   partner: [
     'view_dashboard',
-    'view_analytics'
+    'view_analytics',
+    'manage_sales'
   ],
   employee: [
     'view_dashboard',
@@ -36,7 +39,8 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     'manage_clients',
     'manage_products',
     'manage_sales',
-    'manage_expenses'
+    'manage_expenses',
+    'manage_sales'
   ]
 }
 
