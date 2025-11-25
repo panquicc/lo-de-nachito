@@ -69,3 +69,31 @@ export async function createSale(saleData: SaleData): Promise<{ success: boolean
 
   return response.json()
 }
+
+export async function deleteSale(id: string): Promise<void> {
+  const response = await fetch(`/api/sales/${id}`, {
+    method: 'DELETE',
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to delete sale')
+  }
+}
+
+export async function updateSale(id: string, updates: Partial<Sale>): Promise<Sale> {
+  const response = await fetch(`/api/sales/${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(updates),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to update sale')
+  }
+
+  return response.json()
+}
