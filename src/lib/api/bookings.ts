@@ -118,3 +118,39 @@ export async function deleteBooking(id: string): Promise<void> {
   await db.bookings.delete(id)
   await addToSyncQueue('bookings', 'DELETE', { id })
 }
+
+export async function apiCreateBooking(bookingData: CreateBookingData): Promise<Booking> {
+  const response = await fetch('/api/bookings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(bookingData),
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to create booking in API')
+  }
+  return response.json()
+}
+
+export async function apiUpdateBooking(id: string, updates: Partial<CreateBookingData>): Promise<Booking> {
+  const response = await fetch(`/api/bookings/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to update booking in API')
+  }
+  return response.json()
+}
+
+export async function apiDeleteBooking(id: string): Promise<void> {
+  const response = await fetch(`/api/bookings/${id}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to delete booking in API')
+  }
+}

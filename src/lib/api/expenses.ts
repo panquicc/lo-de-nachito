@@ -54,3 +54,39 @@ export async function deleteExpense(id: string): Promise<void> {
     await db.expenses.delete(id)
     await addToSyncQueue('expenses', 'DELETE', { id })
 }
+
+export async function apiCreateExpense(expense: Expense): Promise<Expense> {
+    const response = await fetch('/api/expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(expense),
+    })
+    if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create expense in API')
+    }
+    return response.json()
+}
+
+export async function apiUpdateExpense(id: string, updates: Partial<Expense>): Promise<Expense> {
+    const response = await fetch(`/api/expenses/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+    })
+    if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to update expense in API')
+    }
+    return response.json()
+}
+
+export async function apiDeleteExpense(id: string): Promise<void> {
+    const response = await fetch(`/api/expenses/${id}`, {
+        method: 'DELETE',
+    })
+    if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete expense in API')
+    }
+}

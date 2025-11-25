@@ -64,3 +64,39 @@ export async function deleteClient(id: string): Promise<void> {
   await db.clients.delete(id)
   await addToSyncQueue('clients', 'DELETE', { id })
 }
+
+export async function apiCreateClient(client: Client): Promise<Client> {
+  const response = await fetch('/api/clients', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(client),
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to create client in API')
+  }
+  return response.json()
+}
+
+export async function apiUpdateClient(id: string, updates: Partial<Client>): Promise<Client> {
+  const response = await fetch(`/api/clients/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to update client in API')
+  }
+  return response.json()
+}
+
+export async function apiDeleteClient(id: string): Promise<void> {
+  const response = await fetch(`/api/clients/${id}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to delete client in API')
+  }
+}

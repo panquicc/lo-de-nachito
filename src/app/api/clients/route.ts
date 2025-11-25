@@ -6,9 +6,9 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
-    
+
     const supabase = await createClient()
-    
+
     let query = supabase
       .from('clients')
       .select('*')
@@ -33,11 +33,17 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
-    const { name, phone, email } = await request.json()
+    const { name, phone, email, id, created_at } = await request.json()
 
     const { data: client, error } = await supabase
       .from('clients')
-      .insert([{ name, phone, email }])
+      .insert([{
+        id: id || crypto.randomUUID(),
+        created_at: created_at || new Date().toISOString(),
+        name,
+        phone,
+        email
+      }])
       .select()
       .single()
 

@@ -1,9 +1,9 @@
 import { db, SyncQueueItem } from './db'
-import { fetchSalesFromApi, createSale, updateSale, deleteSale } from './api/sales'
-import { fetchProductsFromApi, createProduct, updateProduct, deleteProduct } from './api/products'
-import { fetchBookingsFromApi, createBooking, updateBooking, deleteBooking } from './api/bookings'
-import { fetchClientsFromApi } from './api/clients'
-import { fetchExpensesFromApi } from './api/expenses'
+import { fetchSalesFromApi, apiCreateSale, apiUpdateSale, apiDeleteSale } from './api/sales'
+import { fetchProductsFromApi, apiCreateProduct, apiUpdateProduct, apiDeleteProduct } from './api/products'
+import { fetchBookingsFromApi, apiCreateBooking, apiUpdateBooking, apiDeleteBooking } from './api/bookings'
+import { fetchClientsFromApi, apiCreateClient, apiUpdateClient, apiDeleteClient } from './api/clients'
+import { fetchExpensesFromApi, apiCreateExpense, apiUpdateExpense, apiDeleteExpense } from './api/expenses'
 import { subDays, format } from 'date-fns'
 
 export async function syncPull() {
@@ -60,21 +60,30 @@ export async function syncPush() {
 async function processQueueItem(item: SyncQueueItem) {
     switch (item.table) {
         case 'sales':
-            if (item.action === 'CREATE') await createSale(item.data)
-            if (item.action === 'UPDATE') await updateSale(item.data.id, item.data)
-            if (item.action === 'DELETE') await deleteSale(item.data.id)
+            if (item.action === 'CREATE') await apiCreateSale(item.data)
+            if (item.action === 'UPDATE') await apiUpdateSale(item.data.id, item.data)
+            if (item.action === 'DELETE') await apiDeleteSale(item.data.id)
             break
         case 'products':
-            if (item.action === 'CREATE') await createProduct(item.data)
-            if (item.action === 'UPDATE') await updateProduct(item.data.id, item.data)
-            if (item.action === 'DELETE') await deleteProduct(item.data.id)
+            if (item.action === 'CREATE') await apiCreateProduct(item.data)
+            if (item.action === 'UPDATE') await apiUpdateProduct(item.data.id, item.data)
+            if (item.action === 'DELETE') await apiDeleteProduct(item.data.id)
             break
         case 'bookings':
-            if (item.action === 'CREATE') await createBooking(item.data)
-            if (item.action === 'UPDATE') await updateBooking(item.data.id, item.data)
-            if (item.action === 'DELETE') await deleteBooking(item.data.id)
+            if (item.action === 'CREATE') await apiCreateBooking(item.data)
+            if (item.action === 'UPDATE') await apiUpdateBooking(item.data.id, item.data)
+            if (item.action === 'DELETE') await apiDeleteBooking(item.data.id)
             break
-        // Add other cases as needed
+        case 'expenses':
+            if (item.action === 'CREATE') await apiCreateExpense(item.data)
+            if (item.action === 'UPDATE') await apiUpdateExpense(item.data.id, item.data)
+            if (item.action === 'DELETE') await apiDeleteExpense(item.data.id)
+            break
+        case 'clients':
+            if (item.action === 'CREATE') await apiCreateClient(item.data)
+            if (item.action === 'UPDATE') await apiUpdateClient(item.data.id, item.data)
+            if (item.action === 'DELETE') await apiDeleteClient(item.data.id)
+            break
     }
 }
 

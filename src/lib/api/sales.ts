@@ -106,3 +106,39 @@ export async function updateSale(id: string, updates: Partial<Sale>): Promise<Sa
 
   return updatedSale
 }
+
+export async function apiCreateSale(saleData: SaleData): Promise<Sale> {
+  const response = await fetch('/api/sales', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(saleData),
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to create sale in API')
+  }
+  return response.json()
+}
+
+export async function apiUpdateSale(id: string, updates: Partial<Sale>): Promise<Sale> {
+  const response = await fetch(`/api/sales/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to update sale in API')
+  }
+  return response.json()
+}
+
+export async function apiDeleteSale(id: string): Promise<void> {
+  const response = await fetch(`/api/sales/${id}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to delete sale in API')
+  }
+}

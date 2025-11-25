@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 export async function GET() {
   try {
     const supabase = await createClient()
-    
+
     const { data: products, error } = await supabase
       .from('products')
       .select(`
@@ -54,13 +54,15 @@ export async function POST(request: Request) {
     // Validar campos requeridos
     if (!productData.name || productData.price === undefined) {
       return NextResponse.json(
-        { error: 'Nombre y precio son campos requeridos' }, 
+        { error: 'Nombre y precio son campos requeridos' },
         { status: 400 }
       )
     }
 
     // Preparar datos con valores por defecto
     const productToInsert = {
+      id: productData.id || crypto.randomUUID(),
+      created_at: productData.created_at || new Date().toISOString(),
       name: productData.name,
       price: productData.price,
       cost_price: productData.cost_price || null,

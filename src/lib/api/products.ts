@@ -154,3 +154,39 @@ export async function deleteProductComponent(
 
   return response.json()
 }
+
+export async function apiCreateProduct(product: Omit<Product, 'id' | 'created_at'>): Promise<Product> {
+  const response = await fetch('/api/products', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(product),
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to create product in API')
+  }
+  return response.json()
+}
+
+export async function apiUpdateProduct(id: string, updates: Partial<Product>): Promise<Product> {
+  const response = await fetch(`/api/products/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to update product in API')
+  }
+  return response.json()
+}
+
+export async function apiDeleteProduct(id: string): Promise<void> {
+  const response = await fetch(`/api/products/${id}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to delete product in API')
+  }
+}
