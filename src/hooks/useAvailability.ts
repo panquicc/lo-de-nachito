@@ -28,12 +28,12 @@ export function useAvailability({ courtId, date }: AvailabilityParams) {
       }
 
       const supabase = createPublicClient()
-      
+
       // Calcular rango del día completo
       const startDate = new Date(date)
       const endDate = new Date(date)
       endDate.setDate(endDate.getDate() + 1)
-      
+
       // Obtener reservas existentes
       const { data: existingBookings, error: bookingsError } = await supabase
         .from('bookings')
@@ -77,26 +77,34 @@ export function useAvailability({ courtId, date }: AvailabilityParams) {
 }
 
 function generateAvailableSlots(
-  date: string, 
-  existingBookings: any[], 
+  date: string,
+  existingBookings: any[],
   courtType: string
 ) {
   const slots = []
   const startHour = 8
   const endHour = 23
   const slotDuration = 60
-  
+
+  const now = new Date()
+  const minBookingTime = new Date(now.getTime() + 2 * 60 * 60 * 1000)
+
   for (let hour = startHour; hour < endHour; hour++) {
     for (let minute = 0; minute < 60; minute += slotDuration) {
       const slotStart = new Date(`${date}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`)
+
+      if (slotStart < minBookingTime) {
+        continue
+      }
+
       const slotEnd = new Date(slotStart.getTime() + slotDuration * 60000)
-      
+
       const isAvailable = !existingBookings.some(booking => {
         const bookingStart = new Date(booking.start_time)
         const bookingEnd = new Date(booking.end_time)
         return slotStart < bookingEnd && slotEnd > bookingStart
       })
-      
+
       if (isAvailable) {
         slots.push({
           start_time: slotStart.toISOString(),
@@ -106,6 +114,6 @@ function generateAvailableSlots(
       }
     }
   }
-  
+
   return slots
 }

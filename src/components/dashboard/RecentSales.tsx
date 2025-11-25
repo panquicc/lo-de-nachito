@@ -66,7 +66,7 @@ export default function RecentSales() {
     )
   }
 
-  const recentSales = sales?.slice(0, 100) || [] // Mostrar hasta 10 ventas
+  const recentSales = sales?.slice(0, 100) || [] // Mostrar hasta 100 ventas
   const totalToday = sales?.reduce((total, sale) => total + sale.total_amount, 0) || 0
 
   const formatTime = (dateString: string) => {
