@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { syncPull, syncPush } from '@/lib/sync'
 import { toast } from 'sonner'
-import { usePathname } from 'next/navigation'
 
 interface OfflineContextType {
     isOnline: boolean
@@ -24,8 +23,6 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     const [isSyncing, setIsSyncing] = useState(false)
     const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null)
 
-    const pathname = usePathname()
-
     useEffect(() => {
         // Initial check
         setIsOnline(navigator.onLine)
@@ -33,9 +30,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
         const handleOnline = () => {
             setIsOnline(true)
             toast.success('Conexión restaurada. Sincronizando datos...')
-            if (!pathname?.startsWith('/disponibles')) {
-                performSync()
-            }
+            performSync()
         }
 
         const handleOffline = () => {
@@ -47,7 +42,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
         window.addEventListener('offline', handleOffline)
 
         // Initial sync on mount if online
-        if (navigator.onLine && !pathname?.startsWith('/disponibles')) {
+        if (navigator.onLine) {
             performSync()
         }
 
