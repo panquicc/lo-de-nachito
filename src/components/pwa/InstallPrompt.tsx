@@ -67,59 +67,56 @@ export function InstallPrompt() {
     return (
         <AnimatePresence>
             {isVisible && (
-                <motion.div
-                    initial={{ opacity: 0, y: 50 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 50 }}
-                    className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-white rounded-lg shadow-xl border p-4 z-50"
-                >
-                    <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                            <h3 className="font-semibold text-lg mb-1">Instala la App</h3>
-                            <p className="text-sm text-slate-600 mb-3">
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden"
+                    >
+                        <div className="p-6 text-center">
+                            <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                                <Download className="w-8 h-8 text-blue-600" />
+                            </div>
+
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">
+                                {isIOS ? "Instalar App en iPhone" : "¿Instalar App de Turnos?"}
+                            </h3>
+
+                            <p className="text-slate-600 mb-6 leading-relaxed">
                                 {isIOS
-                                    ? "Para instalar en iOS: toca el botón compartir y selecciona 'Agregar a inicio'"
-                                    : "Descarga la aplicación para tener siempre la disponibilidad a mano y reservar más rápido."
+                                    ? "Para una mejor experiencia, toca el botón compartir y selecciona 'Agregar a inicio'"
+                                    : "Instala nuestra aplicación para reservar tus turnos más rápido y tenerlos siempre a mano."
                                 }
                             </p>
-                            {!isIOS && (
-                                <div className="flex gap-2">
+
+                            {!isIOS ? (
+                                <div className="space-y-3">
                                     <Button
                                         onClick={handleInstall}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                                        size="sm"
+                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-6 text-lg rounded-xl shadow-lg shadow-blue-200"
                                     >
-                                        <Download className="w-4 h-4 mr-2" />
-                                        Instalar
+                                        Sí, instalar ahora
                                     </Button>
                                     <Button
                                         variant="ghost"
                                         onClick={handleDismiss}
-                                        size="sm"
+                                        className="w-full text-slate-500 hover:text-slate-700 hover:bg-slate-50"
                                     >
-                                        Ahora no
+                                        No, gracias
                                     </Button>
                                 </div>
-                            )}
-                            {isIOS && (
+                            ) : (
                                 <Button
-                                    variant="ghost"
                                     onClick={handleDismiss}
-                                    size="sm"
-                                    className="mt-2"
+                                    className="w-full bg-slate-900 text-white hover:bg-slate-800 rounded-xl py-6"
                                 >
                                     Entendido
                                 </Button>
                             )}
                         </div>
-                        <button
-                            onClick={handleDismiss}
-                            className="text-slate-400 hover:text-slate-600"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-                    </div>
-                </motion.div>
+                    </motion.div>
+                </div>
             )}
         </AnimatePresence>
     )
