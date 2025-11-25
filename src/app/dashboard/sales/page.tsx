@@ -4,7 +4,11 @@
 import { useState, useEffect } from 'react'
 import SalesFilters from '@/components/sales/SalesFilters'
 import SalesHistoryTable from '@/components/sales/SalesHistoryTable'
+import SalesStats from '@/components/sales/SalesStats'
 import { ArrowDownTrayIcon } from '@heroicons/react/24/outline'
+import { Plus, ShoppingCart } from 'lucide-react'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 
 export default function SalesHistoryPage() {
     const [sales, setSales] = useState([])
@@ -77,25 +81,38 @@ export default function SalesHistoryPage() {
     }
 
     return (
-        <div className="p-4 sm:p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-6 max-w-[1600px] mx-auto">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Historial de Ventas</h1>
-                    <p className="text-gray-600 mt-1">Consulta y gestiona el histórico de ventas.</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Ventas</h1>
+                    <p className="text-gray-500 mt-1">Gestiona tus ventas, consulta métricas y exporta reportes.</p>
                 </div>
-                <button
-                    onClick={exportToCSV}
-                    disabled={sales.length === 0}
-                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    <ArrowDownTrayIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
-                    Exportar CSV
-                </button>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Button
+                        variant="outline"
+                        onClick={exportToCSV}
+                        disabled={sales.length === 0}
+                        className="flex-1 sm:flex-none"
+                    >
+                        <ArrowDownTrayIcon className="mr-2 h-4 w-4" />
+                        Exportar
+                    </Button>
+                    <Link href="/dashboard/kiosk" className="flex-1 sm:flex-none">
+                        <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Nueva Venta
+                        </Button>
+                    </Link>
+                </div>
             </div>
 
-            <SalesFilters onFilterChange={handleFilterChange} />
+            <SalesStats sales={sales} />
 
-            <SalesHistoryTable sales={sales} isLoading={isLoading} />
+            <div className="space-y-4">
+                <SalesFilters onFilterChange={handleFilterChange} />
+                <SalesHistoryTable sales={sales} isLoading={isLoading} />
+            </div>
         </div>
     )
 }
+
