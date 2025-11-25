@@ -22,6 +22,10 @@ export function InstallPrompt() {
         const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
         setIsIOS(isIOSDevice)
 
+        // Check if user has dismissed the prompt recently
+        const isDismissed = localStorage.getItem('installPromptDismissed')
+        if (isDismissed) return
+
         const handler = (e: any) => {
             e.preventDefault()
             setDeferredPrompt(e)
@@ -60,6 +64,7 @@ export function InstallPrompt() {
 
     const handleDismiss = () => {
         setIsVisible(false)
+        localStorage.setItem('installPromptDismissed', 'true')
     }
 
     if (isStandalone || !isVisible) return null

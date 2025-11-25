@@ -10,6 +10,7 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Lo de Nachito - Panel de Administración',
   description: 'Sistema de gestión de canchas',
+  manifest: '/api/manifest/admin',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',

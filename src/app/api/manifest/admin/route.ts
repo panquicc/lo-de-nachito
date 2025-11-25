@@ -1,7 +1,7 @@
-import { MetadataRoute } from 'next'
+import { NextResponse } from 'next/server'
 
-export default function manifest(): MetadataRoute.Manifest {
-    return {
+export async function GET() {
+    return NextResponse.json({
         name: 'Lo de Nachito',
         short_name: 'Lo de Nachito',
         description: 'Sistema de gestión de canchas',
@@ -16,5 +16,5 @@ export default function manifest(): MetadataRoute.Manifest {
                 type: 'image/x-icon',
             },
         ],
-    }
+    })
 }
