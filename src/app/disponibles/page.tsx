@@ -1,4 +1,3 @@
-// src/app/disponibles/page.tsx 
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { useCourts } from '@/hooks/useCourts'
 import { useState, useRef } from 'react'
 import { MapPin } from 'lucide-react'
+import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 
 export default function DisponiblesPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
@@ -29,13 +29,11 @@ export default function DisponiblesPage() {
     setSelectedSlots([])
   }
 
-  // ← Nueva función para manejar selección de cancha
   const handleCourtSelect = (courtId: string) => {
     setSelectedCourt(courtId)
-    
-    // Hacer scroll al paso 2 después de un pequeño delay
+
     setTimeout(() => {
-      step2Ref.current?.scrollIntoView({ 
+      step2Ref.current?.scrollIntoView({
         behavior: 'smooth',
         block: 'start'
       })
@@ -45,7 +43,6 @@ export default function DisponiblesPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 py-4 md:py-8">
       <div className="container mx-auto px-3 md:px-4 max-w-4xl">
-        {/* Header Mejorado - Más compacto en móvil */}
         <div className="text-center mb-8 md:mb-12">
           <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm rounded-full px-4 py-2 md:px-6 md:py-3 shadow-sm border mb-4 md:mb-6">
             <MapPin className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
@@ -61,9 +58,7 @@ export default function DisponiblesPage() {
           </p>
         </div>
 
-        {/* Proceso de Reserva */}
         <div className="space-y-6">
-          {/* Paso 1: Selección de Cancha */}
           <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-3 text-2xl">
@@ -83,10 +78,9 @@ export default function DisponiblesPage() {
             </CardContent>
           </Card>
 
-          {/* Paso 2: Selección de Fecha */}
           {selectedCourt && (
-            <Card 
-              ref={step2Ref} 
+            <Card
+              ref={step2Ref}
               className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm"
             >
               <CardHeader className="pb-4">
@@ -107,7 +101,6 @@ export default function DisponiblesPage() {
           )}
         </div>
 
-        {/* Modal de Horarios */}
         {selectedCourt && selectedDate && (
           <TimeSlotsModal
             courtId={selectedCourt}
@@ -118,6 +111,8 @@ export default function DisponiblesPage() {
             onSlotSelect={setSelectedSlots}
           />
         )}
+
+        <InstallPrompt />
       </div>
     </div>
   )
