@@ -1,4 +1,6 @@
 // src/lib/api/clients.ts
+import { db } from '@/lib/db'
+import { addToSyncQueue } from '@/lib/sync'
 
 export type Client = {
   id: string
@@ -9,70 +11,50 @@ export type Client = {
 }
 
 export async function getClients(search?: string): Promise<Client[]> {
-  const url = search ? `/api/clients?search=${encodeURIComponent(search)}` : '/api/clients'
-  
-  const response = await fetch(url)
-  
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to fetch clients')
+  let clients = await db.clients.toArray()
+
+  if (search) {
+    const lowerSearch = search.toLowerCase()
+    clients = clients.filter(c =>
+      c.name.toLowerCase().includes(lowerSearch) ||
+      c.email?.toLowerCase().includes(lowerSearch)
+    )
   }
 
-  return response.json()
+  return clients
 }
 
 export async function getClient(id: string): Promise<Client> {
-  const response = await fetch(`/api/clients/${id}`)
-  
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to fetch client')
-  }
-
-  return response.json()
+  const client = await db.clients.get(id)
+  if (!client) throw new Error('Client not found')
+  return client
 }
 
-export async function createClient(client: Omit<Client, 'id' | 'created_at'>): Promise<Client> {
-  const response = await fetch('/api/clients', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(client),
-  })
-
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to create client')
+export async function createClient(clientData: Omit<Client, 'id' | 'created_at'>): Promise<Client> {
+  const newClient: Client = {
+    ...clientData,
+    id: crypto.randomUUID(),
+    created_at: new Date().toISOString(),
   }
 
-  return response.json()
+  await db.clients.add(newClient)
+  await addToSyncQueue('clients', 'CREATE', newClient)
+
+  return newClient
 }
 
 export async function updateClient(id: string, updates: Partial<Client>): Promise<Client> {
-  const response = await fetch(`/api/clients/${id}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(updates),
-  })
+  await db.clients.update(id, updates)
+  const updatedClient = await db.clients.get(id)
 
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to update client')
-  }
+  if (!updatedClient) throw new Error('Client not found')
 
-  return response.json()
+  await addToSyncQueue('clients', 'UPDATE', { id, ...updates })
+
+  return updatedClient
 }
 
 export async function deleteClient(id: string): Promise<void> {
-  const response = await fetch(`/api/clients/${id}`, {
-    method: 'DELETE',
-  })
-
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to delete client')
-  }
+  await db.clients.delete(id)
+  await addToSyncQueue('clients', 'DELETE', { id })
 }

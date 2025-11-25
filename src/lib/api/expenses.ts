@@ -1,65 +1,50 @@
 // src/lib/api/expenses.ts
+import { db } from '@/lib/db'
+import { addToSyncQueue } from '@/lib/sync'
 import { Expense, CreateExpenseDTO } from '@/types/expenses'
 
 export async function getExpenses(filters?: { startDate?: string; endDate?: string; category?: string }): Promise<Expense[]> {
-    const params = new URLSearchParams()
-    if (filters?.startDate) params.append('startDate', filters.startDate)
-    if (filters?.endDate) params.append('endDate', filters.endDate)
-    if (filters?.category) params.append('category', filters.category)
+    let expenses = await db.expenses.toArray()
 
-    const url = `/api/expenses?${params.toString()}`
-
-    const response = await fetch(url)
-
-    if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to fetch expenses')
+    if (filters?.startDate) {
+        expenses = expenses.filter(e => e.date >= filters.startDate!)
+    }
+    if (filters?.endDate) {
+        expenses = expenses.filter(e => e.date <= filters.endDate!)
+    }
+    if (filters?.category) {
+        expenses = expenses.filter(e => e.category === filters.category)
     }
 
-    return response.json()
+    return expenses
 }
 
-export async function createExpense(expense: CreateExpenseDTO): Promise<Expense> {
-    const response = await fetch('/api/expenses', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(expense),
-    })
-
-    if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to create expense')
+export async function createExpense(expenseData: CreateExpenseDTO): Promise<Expense> {
+    const newExpense: Expense = {
+        ...expenseData,
+        id: crypto.randomUUID(),
+        created_at: new Date().toISOString(),
+        created_by: 'local-user', // Placeholder, ideally we get the current user
     }
 
-    return response.json()
+    await db.expenses.add(newExpense)
+    await addToSyncQueue('expenses', 'CREATE', newExpense)
+
+    return newExpense
 }
 
 export async function updateExpense(id: string, updates: Partial<CreateExpenseDTO>): Promise<Expense> {
-    const response = await fetch(`/api/expenses/${id}`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updates),
-    })
+    await db.expenses.update(id, updates)
+    const updatedExpense = await db.expenses.get(id)
 
-    if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to update expense')
-    }
+    if (!updatedExpense) throw new Error('Expense not found')
 
-    return response.json()
+    await addToSyncQueue('expenses', 'UPDATE', { id, ...updates })
+
+    return updatedExpense
 }
 
 export async function deleteExpense(id: string): Promise<void> {
-    const response = await fetch(`/api/expenses/${id}`, {
-        method: 'DELETE',
-    })
-
-    if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to delete expense')
-    }
+    await db.expenses.delete(id)
+    await addToSyncQueue('expenses', 'DELETE', { id })
 }

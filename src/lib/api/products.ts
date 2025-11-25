@@ -1,4 +1,7 @@
 // src/lib/api/products.ts
+import { db } from '@/lib/db'
+import { addToSyncQueue } from '@/lib/sync'
+
 export interface ProductComponent {
   id: string
   quantity_required: number
@@ -20,12 +23,6 @@ export interface Product {
   components?: ProductComponent[]
 }
 
-export interface ProductComponent {
-  id: string
-  quantity_required: number
-  component: Product
-}
-
 export interface AddComponentData {
   component_product_id: string
   quantity_required: number
@@ -36,72 +33,52 @@ export interface UpdateComponentData {
 }
 
 export async function getProducts(): Promise<Product[]> {
-  const response = await fetch('/api/products')
-
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Fallo al obtener el producto')
-  }
-
-  return response.json()
+  return db.products.toArray()
 }
 
 export async function createProduct(product: Omit<Product, 'id' | 'created_at'>): Promise<Product> {
-  const response = await fetch('/api/products', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(product),
-  })
-
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Fallo al crear el producto')
+  const newProduct: Product = {
+    ...product,
+    id: crypto.randomUUID(),
+    created_at: new Date().toISOString(),
   }
 
-  return response.json()
+  await db.products.add(newProduct)
+  await addToSyncQueue('products', 'CREATE', newProduct)
+
+  return newProduct
 }
 
 export async function updateProduct(id: string, updates: Partial<Product>): Promise<Product> {
-  const response = await fetch(`/api/products/${id}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(updates),
-  })
+  await (db.products as any).update(id, updates)
+  const updatedProduct = await db.products.get(id)
 
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Fallo al actualizar el producto')
-  }
+  if (!updatedProduct) throw new Error('Product not found')
 
-  return response.json()
+  await addToSyncQueue('products', 'UPDATE', { id, ...updates })
+
+  return updatedProduct
 }
 
 export async function deleteProduct(id: string): Promise<{ success: boolean }> {
-  const response = await fetch(`/api/products/${id}`, {
-    method: 'DELETE',
-  })
-
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to delete product')
-  }
-
-  return response.json()
+  await db.products.delete(id)
+  await addToSyncQueue('products', 'DELETE', { id })
+  return { success: true }
 }
 
-// Agregar estas funciones al archivo existente
+// Component functions - currently online only or need specific offline logic
+// For now, we can leave them as API calls or implement basic local update if needed.
+// Given the complexity of relations, we'll keep them as API calls but they might fail offline.
+// A better approach would be to update the local product's components array and queue a specific action.
+
 export async function getProductComponents(productId: string): Promise<ProductComponent[]> {
-  const response = await fetch(`/api/products/${productId}/components`)
-
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Error al obtener componentes del producto')
+  const product = await db.products.get(productId)
+  if (product && product.components) {
+    return product.components
   }
-
+  // Fallback to API if not found locally (shouldn't happen if synced)
+  const response = await fetch(`/api/products/${productId}/components`)
+  if (!response.ok) throw new Error('Error al obtener componentes del producto')
   return response.json()
 }
 
@@ -109,6 +86,10 @@ export async function addProductComponent(
   productId: string,
   componentData: AddComponentData
 ): Promise<ProductComponent> {
+  // This is complex to handle offline without more context on the component product
+  // For now, we'll try to execute it against the API.
+  // In a full offline implementation, we would update the local product object.
+
   const response = await fetch(`/api/products/${productId}/components`, {
     method: 'POST',
     headers: {

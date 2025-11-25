@@ -1,4 +1,6 @@
 // src/lib/api/bookings.ts
+import { db } from '@/lib/db'
+import { addToSyncQueue } from '@/lib/sync'
 import { Client } from './clients'
 import { Court } from './courts'
 
@@ -47,74 +49,63 @@ export interface CreateBookingData {
 }
 
 export async function getBookings(date?: string, courtId?: string): Promise<Booking[]> {
-  const params = new URLSearchParams()
-  if (date) params.append('date', date)
-  if (courtId) params.append('courtId', courtId)
+  let bookings = await db.bookings.toArray()
 
-  const url = `/api/bookings?${params.toString()}`
-
-  const response = await fetch(url)
-
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to fetch bookings')
+  if (date) {
+    // Filter by date (assuming start_time is ISO string)
+    bookings = bookings.filter(b => b.start_time.startsWith(date))
   }
 
-  return response.json()
+  if (courtId) {
+    bookings = bookings.filter(b => b.court_id === courtId)
+  }
+
+  return bookings
 }
 
 export async function getBooking(id: string): Promise<Booking> {
-  const response = await fetch(`/api/bookings/${id}`)
-
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to fetch booking')
-  }
-
-  return response.json()
+  const booking = await db.bookings.get(id)
+  if (!booking) throw new Error('Booking not found')
+  return booking
 }
 
-export async function createBooking(booking: CreateBookingData): Promise<Booking> {
-  const response = await fetch('/api/bookings', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(booking),
-  })
-
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to create booking')
+export async function createBooking(bookingData: CreateBookingData): Promise<Booking> {
+  const newBooking: Booking = {
+    id: crypto.randomUUID(),
+    court_id: bookingData.court_id,
+    client_id: bookingData.client_id,
+    start_time: bookingData.start_time,
+    end_time: bookingData.end_time,
+    status: bookingData.status,
+    amount: bookingData.amount,
+    payment_method: bookingData.payment_method,
+    cash_amount: bookingData.cash_amount,
+    mercado_pago_amount: bookingData.mercado_pago_amount,
+    hour_price: bookingData.hour_price,
+    deposit_amount: bookingData.deposit_amount,
+    notes: bookingData.notes,
+    created_at: new Date().toISOString(),
+    // clients and courts might need to be fetched or mocked if needed for UI
   }
 
-  return response.json()
+  await db.bookings.add(newBooking)
+  await addToSyncQueue('bookings', 'CREATE', bookingData)
+
+  return newBooking
 }
 
 export async function updateBooking(id: string, updates: Partial<CreateBookingData>): Promise<Booking> {
-  const response = await fetch(`/api/bookings/${id}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(updates),
-  })
+  await db.bookings.update(id, updates as any) // Type casting as updates might not match Booking exactly
+  const updatedBooking = await db.bookings.get(id)
 
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to update booking')
-  }
+  if (!updatedBooking) throw new Error('Booking not found')
 
-  return response.json()
+  await addToSyncQueue('bookings', 'UPDATE', { id, ...updates })
+
+  return updatedBooking
 }
 
 export async function deleteBooking(id: string): Promise<void> {
-  const response = await fetch(`/api/bookings/${id}`, {
-    method: 'DELETE',
-  })
-
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to delete booking')
-  }
+  await db.bookings.delete(id)
+  await addToSyncQueue('bookings', 'DELETE', { id })
 }
