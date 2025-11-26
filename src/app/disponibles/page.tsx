@@ -5,7 +5,7 @@ import { CourtSelection } from '@/components/availability/CourtSelection'
 import { TimeSlotsModal } from '@/components/availability/TimeSlotsModal'
 import { DateCalendar } from '@/components/availability/DateCalendar'
 import { Badge } from '@/components/ui/badge'
-import { useCourts } from '@/hooks/useCourts'
+import { usePublicCourts } from '@/hooks/usePublicCourts'
 import { useState, useRef } from 'react'
 import { MapPin } from 'lucide-react'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
@@ -17,7 +17,7 @@ export default function DisponiblesPage() {
   const [showSlotsModal, setShowSlotsModal] = useState(false)
   const step2Ref = useRef<HTMLDivElement>(null)
 
-  const { data: courts, isLoading } = useCourts()
+  const { data: courts, isLoading } = usePublicCourts()
 
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date)
