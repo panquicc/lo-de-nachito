@@ -1,4 +1,5 @@
 // src/lib/api/courts.ts
+import { db } from '@/lib/db'
 import { createClient } from '@/lib/supabase/client'
 
 export interface Court {
@@ -11,8 +12,12 @@ export interface Court {
 }
 
 export async function getCourts(): Promise<Court[]> {
+  return db.courts.toArray()
+}
+
+export async function fetchCourtsFromApi(): Promise<Court[]> {
   const supabase = createClient()
-  
+
   const { data, error } = await supabase
     .from('courts')
     .select('*')

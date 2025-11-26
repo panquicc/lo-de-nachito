@@ -4,6 +4,7 @@ import { fetchProductsFromApi, apiCreateProduct, apiUpdateProduct, apiDeleteProd
 import { fetchBookingsFromApi, apiCreateBooking, apiUpdateBooking, apiDeleteBooking } from './api/bookings'
 import { fetchClientsFromApi, apiCreateClient, apiUpdateClient, apiDeleteClient } from './api/clients'
 import { fetchExpensesFromApi, apiCreateExpense, apiUpdateExpense, apiDeleteExpense } from './api/expenses'
+import { fetchCourtsFromApi } from './api/courts'
 import { subDays, format } from 'date-fns'
 
 export async function syncPull() {
@@ -11,6 +12,10 @@ export async function syncPull() {
         // 1. Sync Products (Full Sync)
         const products = await fetchProductsFromApi()
         await db.products.bulkPut(products)
+
+        // 1.1 Sync Courts (Full Sync)
+        const courts = await fetchCourtsFromApi()
+        await db.courts.bulkPut(courts)
 
         // 2. Sync Clients (Full Sync)
         const clients = await fetchClientsFromApi()
@@ -66,8 +71,23 @@ export async function syncPush() {
                     await db.syncQueue.delete(item.id)
                 }
 
-                // TODO: Ideally we should notify the user or revert the local change
-                // For now, we just stop the infinite loop
+                // Revert local change to keep UI consistent
+                try {
+                    if (item.action === 'CREATE') {
+                        // If creation failed, delete the local item
+                        // We need to know the ID, which should be in item.data.id
+                        if (item.data?.id) {
+                            // @ts-ignore - dynamic table access
+                            await db[item.table].delete(item.data.id)
+                            console.log(`Reverted local creation of ${item.table} item ${item.data.id}`)
+                        }
+                    }
+                    // For UPDATE/DELETE, reverting is harder without previous state. 
+                    // Ideally we would store previous state in the queue item.
+                    // For now, we accept that the UI might be slightly out of sync until next pull.
+                } catch (revertError) {
+                    console.error('Failed to revert local change:', revertError)
+                }
             }
         }
     }

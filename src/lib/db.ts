@@ -19,6 +19,7 @@ export class AppDatabase extends Dexie {
     bookings!: Table<Booking, string>
     clients!: Table<Client, string>
     expenses!: Table<Expense, string>
+    courts!: Table<any, string> // We'll type this properly in courts.ts or here if circular dep issues
     syncQueue!: Table<SyncQueueItem, number>
 
     constructor() {
@@ -29,6 +30,7 @@ export class AppDatabase extends Dexie {
             bookings: 'id, start_time, court_id, client_id, status',
             clients: 'id, name, email',
             expenses: 'id, date, category',
+            courts: 'id, name, is_active',
             syncQueue: '++id, table, action, timestamp'
         })
     }
