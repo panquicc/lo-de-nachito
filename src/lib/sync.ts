@@ -49,10 +49,26 @@ export async function syncPush() {
             if (item.id) {
                 await db.syncQueue.delete(item.id)
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error(`Failed to process sync item ${item.id}:`, error)
-            // Keep in queue to retry later? Or move to a 'failed' queue?
-            // For now, we leave it. In a real app, we might need a retry count.
+
+            // Check for non-retriable errors (validation, stock, etc.)
+            // If the error message indicates a logic error (not network/server error), remove from queue
+            const errorMessage = error.message?.toLowerCase() || ''
+            if (
+                errorMessage.includes('stock insuficiente') ||
+                errorMessage.includes('bad request') ||
+                errorMessage.includes('400') ||
+                errorMessage.includes('valid') // "no válido", "invalid", etc.
+            ) {
+                console.warn(`Removing invalid item ${item.id} from sync queue due to validation error:`, error.message)
+                if (item.id) {
+                    await db.syncQueue.delete(item.id)
+                }
+
+                // TODO: Ideally we should notify the user or revert the local change
+                // For now, we just stop the infinite loop
+            }
         }
     }
 }

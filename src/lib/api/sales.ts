@@ -64,6 +64,14 @@ export async function fetchSalesFromApi(date?: string): Promise<Sale[]> {
 }
 
 export async function createSale(saleData: SaleData): Promise<{ success: boolean; sale: Sale }> {
+  // Validate stock locally before proceeding
+  for (const item of saleData.items) {
+    const product = await db.products.get(item.product_id)
+    if (product && product.track_stock && (product.stock ?? 0) < item.quantity) {
+      throw new Error(`Stock insuficiente para ${product.name}. Disponible: ${product.stock ?? 0}, Solicitado: ${item.quantity}`)
+    }
+  }
+
   // Create a local representation of the sale
   const newSale: Sale = {
     id: crypto.randomUUID(),
